@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation, Link, Navigate } from 'react-router-dom';
 import { 
-  LayoutDashboard, Users, UserCircle, Briefcase, Settings, 
+  LayoutDashboard, Users, UserCircle, Briefcase, Settings as SettingsIcon, 
   BarChart3, Package, LogOut, Menu, X, Search, Plus, Trash2, Edit, Save, 
   ChevronRight, Home, Shield, Loader2, ChevronLeft, Bell, Sun, Moon, AlertTriangle, Clock,
   CheckCircle2, FileText, Calendar
@@ -20,12 +21,13 @@ import InventoryManagement from './pages/InventoryManagement';
 import UserManagement from './pages/UserManagement';
 import Reports from './pages/Reports';
 import InvoicePage from './pages/InvoicePage';
+import SettingsPage from './pages/SettingsPage';
 
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(true); // Default theme set to black/dark
+  const [isDarkMode, setIsDarkMode] = useState(true);
   const [overdueJobs, setOverdueJobs] = useState<Job[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationRef = useRef<HTMLDivElement>(null);
@@ -95,8 +97,8 @@ const App: React.FC = () => {
 
   if (isInitializing) {
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-900 text-white">
-        <Loader2 className="animate-spin mb-4 text-blue-400" size={48} />
+      <div className={`h-screen w-screen flex flex-col items-center justify-center ${isDarkMode ? 'dark bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+        <Loader2 className="animate-spin mb-4 text-blue-600" size={48} />
         <p className="text-xl font-bold tracking-widest uppercase animate-pulse">Initializing ERP System...</p>
       </div>
     );
@@ -117,7 +119,7 @@ const App: React.FC = () => {
             }`}
           >
             <div className="p-6 border-b border-slate-800 flex items-center justify-start whitespace-nowrap">
-              <div className="bg-blue-600 w-10 h-10 rounded-xl text-white shrink-0 shadow-lg shadow-blue-900/40 flex items-center justify-center font-black text-lg tracking-tighter">
+              <div className="bg-blue-600 w-10 h-10 rounded-[15px] text-white shrink-0 shadow-lg shadow-blue-900/40 flex items-center justify-center font-black text-lg tracking-tighter">
                 RE
               </div>
               <div className="ml-3">
@@ -134,7 +136,7 @@ const App: React.FC = () => {
                 <SidebarItem to="/customers" icon={<Users size={20} />} label="Customers" active={location.pathname === '/customers'} />
               )}
               {hasPrivilege('MANAGE_SERVICES') && (
-                <SidebarItem to="/services" icon={<Settings size={20} />} label="Services" active={location.pathname === '/services'} />
+                <SidebarItem to="/services" icon={<SettingsIcon size={20} />} label="Services" active={location.pathname === '/services'} />
               )}
               
               <SidebarItem to="/invoices" icon={<FileText size={20} />} label="Invoices" active={location.pathname === '/invoices'} />
@@ -151,18 +153,19 @@ const App: React.FC = () => {
               {hasPrivilege('MANAGE_USERS') && (
                 <SidebarItem to="/users" icon={<Shield size={20} />} label="User Access" active={location.pathname === '/users'} />
               )}
+              <SidebarItem to="/settings" icon={<SettingsIcon size={20} />} label="Settings" active={location.pathname === '/settings'} />
             </nav>
           </aside>
 
           {/* Main Content Area */}
           <main className="flex-1 flex flex-col overflow-hidden relative">
             <header className={`h-20 border-b flex items-center justify-between px-6 shrink-0 transition-all backdrop-blur-md sticky top-0 z-20 ${
-              isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-gray-200 shadow-sm'
+              isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white/80 border-slate-100 shadow-sm'
             }`}>
               <div className="flex items-center space-x-6">
                 <button 
                   onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                  className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all active:scale-90"
+                  className="p-2.5 rounded-[15px] bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all active:scale-90"
                 >
                   <Menu size={24} />
                 </button>
@@ -176,7 +179,7 @@ const App: React.FC = () => {
               </div>
 
               <div className="flex items-center space-x-4">
-                <div className="hidden lg:flex items-center bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-xl border border-transparent focus-within:border-blue-500 transition-all w-48 shadow-inner">
+                <div className="hidden lg:flex items-center bg-slate-50 dark:bg-slate-800 px-4 py-2 rounded-[15px] border border-transparent focus-within:border-blue-500 transition-all w-48 shadow-inner">
                   <Search size={16} className="text-slate-400 mr-2" />
                   <input 
                     type="text" 
@@ -188,13 +191,12 @@ const App: React.FC = () => {
                 <div className="flex items-center space-x-1">
                   <button 
                     onClick={() => setIsDarkMode(!isDarkMode)}
-                    className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                    className="p-2 rounded-[15px] text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
                   >
                     {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
                   </button>
                   
-                  {/* Today's Date */}
-                  <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 shadow-sm">
+                  <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-[15px] bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300 shadow-sm">
                     <Calendar size={14} className="text-blue-500" />
                     <span className="text-[10px] font-black uppercase tracking-widest">{today}</span>
                   </div>
@@ -202,7 +204,7 @@ const App: React.FC = () => {
                   <div className="relative" ref={notificationRef}>
                     <button 
                       onClick={() => setShowNotifications(!showNotifications)}
-                      className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all relative"
+                      className="p-2 rounded-[15px] text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all relative"
                     >
                       <Bell size={18} />
                       {overdueJobs.length > 0 && (
@@ -213,8 +215,8 @@ const App: React.FC = () => {
                     </button>
 
                     {showNotifications && (
-                      <div className="absolute right-0 mt-3 w-80 bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden z-50 animate-in fade-in zoom-in duration-200">
-                        <div className="p-5 border-b border-gray-100 dark:border-slate-800 flex justify-between items-center bg-gray-50/50 dark:bg-slate-800/50">
+                      <div className="absolute right-0 mt-3 w-80 bg-white dark:bg-slate-900 rounded-[15px] shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden z-50 animate-in fade-in zoom-in duration-200">
+                        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
                           <h3 className="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white">Alerts</h3>
                           {overdueJobs.length > 0 && <span className="text-[10px] font-bold text-red-500 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded-full">Overdue</span>}
                         </div>
@@ -225,15 +227,15 @@ const App: React.FC = () => {
                               <p className="text-xs font-bold uppercase tracking-wide">All jobs are on track!</p>
                             </div>
                           ) : (
-                            <div className="divide-y divide-gray-50 dark:divide-slate-800">
+                            <div className="divide-y divide-slate-100 dark:divide-slate-800">
                               {overdueJobs.map(job => (
                                 <Link 
                                   key={job.id} 
                                   to="/jobs" 
                                   onClick={() => setShowNotifications(false)}
-                                  className="p-4 flex items-start space-x-4 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors group"
+                                  className="p-4 flex items-start space-x-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
                                 >
-                                  <div className="bg-red-50 dark:bg-red-900/20 text-red-600 p-2 rounded-xl group-hover:scale-110 transition-transform">
+                                  <div className="bg-red-50 dark:bg-red-900/20 text-red-600 p-2 rounded-[15px] group-hover:scale-110 transition-transform">
                                     <AlertTriangle size={18} />
                                   </div>
                                   <div className="flex-1 min-w-0">
@@ -251,12 +253,11 @@ const App: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="h-8 w-px bg-slate-200 dark:bg-slate-800 mx-2"></div>
+                <div className="h-8 w-px bg-slate-100 dark:bg-slate-800 mx-2"></div>
                 
-                {/* Right-aligned Admin/User Identity & Sign Out */}
                 <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-3 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-2xl border border-slate-200 dark:border-slate-800">
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-bold shadow-sm text-white text-xs">
+                  <div className="flex items-center space-x-3 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-[15px] border border-slate-100 dark:border-slate-800">
+                    <div className="w-8 h-8 rounded-[15px] bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center font-bold shadow-sm text-white text-xs">
                       {currentUser.username[0].toUpperCase()}
                     </div>
                     <div className="hidden sm:block">
@@ -267,7 +268,7 @@ const App: React.FC = () => {
                   <button 
                     onClick={handleLogout}
                     title="Sign Out"
-                    className="p-2.5 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-600 hover:text-white transition-all active:scale-90"
+                    className="p-2.5 rounded-[15px] bg-red-50 text-red-600 dark:text-red-400 hover:bg-red-600 hover:text-white transition-all active:scale-90 border border-red-100"
                   >
                     <LogOut size={18} />
                   </button>
@@ -275,7 +276,7 @@ const App: React.FC = () => {
               </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto p-8 scroll-smooth">
+            <div className="flex-1 overflow-y-auto p-8 scroll-smooth bg-slate-50 dark:bg-slate-950">
               <div className="max-w-7xl mx-auto">
                 <Routes>
                   <Route path="/dashboard" element={<Dashboard />} />
@@ -286,6 +287,7 @@ const App: React.FC = () => {
                   <Route path="/inventory" element={<InventoryManagement />} />
                   <Route path="/users" element={<UserManagement />} />
                   <Route path="/reports" element={<Reports />} />
+                  <Route path="/settings" element={<SettingsPage />} />
                   <Route path="*" element={<Navigate to="/dashboard" replace />} />
                 </Routes>
               </div>
@@ -313,7 +315,7 @@ interface SidebarItemProps {
 const SidebarItem: React.FC<SidebarItemProps> = ({ to, icon, label, active }) => (
   <Link 
     to={to} 
-    className={`flex items-center px-4 py-3.5 rounded-2xl transition-all duration-300 group whitespace-nowrap ${
+    className={`flex items-center px-4 py-3.5 rounded-[15px] transition-all duration-300 group whitespace-nowrap ${
       active 
         ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-xl shadow-blue-900/40 translate-x-1' 
         : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'

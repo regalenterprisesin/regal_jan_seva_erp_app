@@ -1,3 +1,4 @@
+
 export type UserRole = 'ADMIN' | 'MANAGER' | 'STAFF';
 
 export type Privilege = 
@@ -69,4 +70,13 @@ export interface InventoryItem {
   minStock: number;
   category: string;
   lastUpdated: string;
+}
+
+export interface CompanySettings {
+  companyName: string;
+  mobileNumber: string;
+  address: string;
+  ownerName: string;
+  email: string;
+  website: string;
 }

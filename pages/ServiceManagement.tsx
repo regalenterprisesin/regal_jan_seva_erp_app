@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../db';
 import { Service } from '../types';
@@ -163,7 +164,7 @@ const ServiceManagement: React.FC = () => {
     <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-500">
       {isProcessing && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-950 p-10 rounded-[2.5rem] shadow-2xl flex flex-col items-center space-y-4 border border-slate-100 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-950 p-10 rounded-[15px] shadow-2xl flex flex-col items-center space-y-4 border border-slate-100 dark:border-slate-800">
             <Loader2 className="animate-spin text-indigo-600" size={48} />
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">Processing Catalog Update...</p>
           </div>
@@ -179,7 +180,7 @@ const ServiceManagement: React.FC = () => {
               placeholder="Search catalog..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none focus:border-indigo-500 transition-all shadow-sm"
+              className="w-full pl-12 pr-4 py-3 rounded-[15px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none focus:border-indigo-500 transition-all shadow-sm"
             />
           </div>
           
@@ -188,7 +189,7 @@ const ServiceManagement: React.FC = () => {
             <select 
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none appearance-none cursor-pointer focus:border-indigo-500 transition-all shadow-sm"
+              className="w-full pl-12 pr-4 py-3 rounded-[15px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none appearance-none cursor-pointer focus:border-indigo-500 transition-all shadow-sm"
             >
               <option value="All" className="bg-white dark:bg-slate-950">All Domains</option>
               {SERVICE_CATEGORIES.map(cat => (
@@ -197,9 +198,9 @@ const ServiceManagement: React.FC = () => {
             </select>
           </div>
 
-          <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0 shadow-sm">
-            <button onClick={() => setView('GRID')} className={`p-2.5 rounded-lg transition-all ${view === 'GRID' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}><LayoutGrid size={20}/></button>
-            <button onClick={() => setView('LIST')} className={`p-2.5 rounded-lg transition-all ${view === 'LIST' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}><List size={20}/></button>
+          <div className="flex bg-white dark:bg-slate-900 p-1 rounded-[15px] border border-slate-200 dark:border-slate-800 shrink-0 shadow-sm">
+            <button onClick={() => setView('GRID')} className={`p-2.5 rounded-[15px] transition-all ${view === 'GRID' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}><LayoutGrid size={20}/></button>
+            <button onClick={() => setView('LIST')} className={`p-2.5 rounded-[15px] transition-all ${view === 'LIST' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}><List size={20}/></button>
           </div>
         </div>
         
@@ -213,7 +214,7 @@ const ServiceManagement: React.FC = () => {
           />
           <button 
             onClick={() => fileInputRef.current?.click()}
-            className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center space-x-2 hover:bg-emerald-600 hover:text-white transition-all shadow-sm active:scale-95 border border-slate-200 dark:border-slate-700"
+            className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white px-6 py-3.5 rounded-[15px] font-black text-xs uppercase tracking-widest flex items-center space-x-2 hover:bg-emerald-600 hover:text-white transition-all shadow-sm active:scale-95 border border-slate-200 dark:border-slate-700"
             title="Import Services from Excel"
           >
             <Upload size={18} />
@@ -222,7 +223,7 @@ const ServiceManagement: React.FC = () => {
 
           <button 
             onClick={handleExportExcel}
-            className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white px-6 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center space-x-2 hover:bg-indigo-600 hover:text-white transition-all shadow-sm active:scale-95 border border-slate-200 dark:border-slate-700"
+            className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white px-6 py-3.5 rounded-[15px] font-black text-xs uppercase tracking-widest flex items-center space-x-2 hover:bg-indigo-600 hover:text-white transition-all shadow-sm active:scale-95 border border-slate-200 dark:border-slate-700"
             title="Export Services to Excel"
           >
             <Download size={18} />
@@ -231,7 +232,7 @@ const ServiceManagement: React.FC = () => {
           
           <button 
             onClick={() => openModal()} 
-            className="bg-slate-900 dark:bg-white text-white dark:text-black px-10 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center space-x-3 hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white transition-all shadow-xl active:scale-95"
+            className="bg-slate-900 dark:bg-white text-white dark:text-black px-10 py-3.5 rounded-[15px] font-black text-xs uppercase tracking-widest flex items-center space-x-3 hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white transition-all shadow-xl active:scale-95"
           >
             <Plus size={18} />
             <span>Add Service</span>
@@ -240,7 +241,7 @@ const ServiceManagement: React.FC = () => {
       </div>
 
       {filteredServices.length === 0 ? (
-        <div className="bg-white dark:bg-slate-900/50 rounded-[3rem] border border-dashed border-slate-200 dark:border-slate-800 p-24 text-center">
+        <div className="bg-white dark:bg-slate-900/50 rounded-[15px] border border-dashed border-slate-200 dark:border-slate-800 p-24 text-center">
           <Settings size={64} className="mx-auto text-slate-300 dark:text-slate-800 mb-6" />
           <h3 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">No Services Mapped</h3>
         </div>
@@ -248,13 +249,13 @@ const ServiceManagement: React.FC = () => {
         view === 'GRID' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-8">
             {filteredServices.map(service => (
-              <div key={service.id} className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl hover:border-indigo-500/50 hover:-translate-y-1 transition-all group flex flex-col justify-between">
+              <div key={service.id} className="bg-white dark:bg-slate-900 p-8 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-xl hover:border-indigo-500/50 hover:-translate-y-1 transition-all group flex flex-col justify-between">
                 <div>
                   <div className="flex justify-between items-start mb-6">
                     <span className="bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest border border-indigo-500/20">{service.category}</span>
                     <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => openModal(service)} className="p-2.5 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-xl border border-slate-200 dark:border-slate-700 transition-all"><Edit size={16} /></button>
-                      <button onClick={() => handleDelete(service.id)} className="p-2.5 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl border border-slate-200 dark:border-slate-700 transition-all"><Trash2 size={16} /></button>
+                      <button onClick={() => openModal(service)} className="p-2.5 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-[15px] border border-slate-200 dark:border-slate-700 transition-all"><Edit size={16} /></button>
+                      <button onClick={() => handleDelete(service.id)} className="p-2.5 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-[15px] border border-slate-200 dark:border-slate-700 transition-all"><Trash2 size={16} /></button>
                     </div>
                   </div>
                   <h4 className="text-xl font-black text-slate-900 dark:text-slate-100 mb-3 leading-tight tracking-tight">{service.name}</h4>
@@ -270,7 +271,7 @@ const ServiceManagement: React.FC = () => {
             ))}
           </div>
         ) : (
-          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden overflow-x-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-100 dark:border-slate-800 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
@@ -292,8 +293,8 @@ const ServiceManagement: React.FC = () => {
                     </td>
                     <td className="px-8 py-6 font-black text-slate-900 dark:text-slate-100 text-lg tracking-tighter">₹{service.basePrice.toLocaleString()}</td>
                     <td className="px-10 py-6 text-right space-x-2">
-                      <button onClick={() => openModal(service)} className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-xl border border-slate-200 dark:border-slate-700 transition-all"><Edit size={18} /></button>
-                      <button onClick={() => handleDelete(service.id)} className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl border border-slate-200 dark:border-slate-700 transition-all"><Trash2 size={18} /></button>
+                      <button onClick={() => openModal(service)} className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-[15px] border border-slate-200 dark:border-slate-700 transition-all"><Edit size={18} /></button>
+                      <button onClick={() => handleDelete(service.id)} className="p-3 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 rounded-[15px] border border-slate-200 dark:border-slate-700 transition-all"><Trash2 size={18} /></button>
                     </td>
                   </tr>
                 ))}
@@ -305,13 +306,13 @@ const ServiceManagement: React.FC = () => {
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 dark:bg-black/80 backdrop-blur-md">
-          <div className="bg-white dark:bg-slate-950 w-full max-w-lg rounded-[3rem] shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-in zoom-in duration-300">
+          <div className="bg-white dark:bg-slate-950 w-full max-w-lg rounded-[15px] shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-in zoom-in duration-300">
             <div className="px-12 py-10 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
               <div>
                 <h3 className="text-2xl font-black text-slate-900 dark:text-white">{editingService ? 'Refine Catalog' : 'Catalog Expansion'}</h3>
                 <p className="text-[10px] font-bold text-slate-500 dark:text-slate-500 uppercase tracking-[0.2em] mt-1">Service Logic & Billing</p>
               </div>
-              <button onClick={closeModal} className="p-3.5 bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-2xl transition-all shadow-sm"><X size={20} /></button>
+              <button onClick={closeModal} className="p-3.5 bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-[15px] transition-all shadow-sm"><X size={20} /></button>
             </div>
             <div className="p-12 space-y-8">
               <div>
@@ -320,7 +321,7 @@ const ServiceManagement: React.FC = () => {
                   type="text" 
                   value={formData.name} 
                   onChange={(e) => setFormData({...formData, name: e.target.value})} 
-                  className="w-full px-6 py-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-black outline-none focus:border-indigo-500 transition-all" 
+                  className="w-full px-6 py-4 rounded-[15px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-black outline-none focus:border-indigo-500 transition-all" 
                   placeholder="e.g. Bio-Metric Verification" 
                 />
               </div>
@@ -331,7 +332,7 @@ const ServiceManagement: React.FC = () => {
                   <select 
                     value={formData.category} 
                     onChange={(e) => setFormData({...formData, category: e.target.value})} 
-                    className="w-full px-6 py-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-black outline-none focus:border-indigo-500 transition-all cursor-pointer"
+                    className="w-full px-6 py-4 rounded-[15px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-black outline-none focus:border-indigo-500 transition-all cursor-pointer"
                   >
                     {SERVICE_CATEGORIES.map(cat => (
                       <option key={cat} value={cat} className="bg-white dark:bg-slate-950">{cat}</option>
@@ -346,7 +347,7 @@ const ServiceManagement: React.FC = () => {
                       type="number" 
                       value={formData.basePrice} 
                       onChange={(e) => setFormData({...formData, basePrice: Number(e.target.value)})} 
-                      className="w-full pl-12 pr-6 py-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-indigo-600 dark:text-indigo-400 font-black outline-none focus:border-indigo-500 transition-all" 
+                      className="w-full pl-12 pr-6 py-4 rounded-[15px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-indigo-600 dark:text-indigo-400 font-black outline-none focus:border-indigo-500 transition-all" 
                     />
                   </div>
                 </div>
@@ -357,14 +358,14 @@ const ServiceManagement: React.FC = () => {
                 <textarea 
                   value={formData.description} 
                   onChange={(e) => setFormData({...formData, description: e.target.value})} 
-                  className="w-full px-6 py-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-100 font-medium outline-none focus:border-indigo-500 min-h-[140px] leading-relaxed resize-none" 
+                  className="w-full px-6 py-4 rounded-[15px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-100 font-medium outline-none focus:border-indigo-500 min-h-[140px] leading-relaxed resize-none" 
                   placeholder="Detailed workflow description..." 
                 />
               </div>
             </div>
             <div className="px-12 py-10 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex justify-end space-x-6">
               <button onClick={closeModal} className="px-8 py-3.5 font-black text-slate-400 dark:text-slate-500 uppercase text-[10px] tracking-widest hover:text-slate-900 dark:hover:text-white transition-colors">Discard</button>
-              <button onClick={handleSave} className="bg-slate-900 dark:bg-white text-white dark:text-black px-12 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white transition-all shadow-2xl active:scale-95 flex items-center space-x-3">
+              <button onClick={handleSave} className="bg-slate-900 dark:bg-white text-white dark:text-black px-12 py-3.5 rounded-[15px] font-black text-xs uppercase tracking-widest hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:text-white transition-all shadow-2xl active:scale-95 flex items-center space-x-3">
                 <Save size={18} />
                 <span>Save Entry</span>
               </button>

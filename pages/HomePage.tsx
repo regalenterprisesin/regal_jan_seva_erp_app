@@ -1,11 +1,12 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   CreditCard, Smartphone, CheckCircle, Clock, MapPin, 
   Phone, Globe, Fingerprint, FileText, ChevronRight,
-  Shield, Home, Briefcase, Users, ChevronLeft
+  Shield, Home, Briefcase, Users, ChevronLeft, MessageSquare, X, Send, Bot, User, Loader2
 } from 'lucide-react';
+import { GoogleGenAI } from "@google/genai";
 
 const BANNER_SLIDES = [
   {
@@ -28,6 +29,127 @@ const BANNER_SLIDES = [
   }
 ];
 
+const AIChat: React.FC = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState<{ role: 'user' | 'ai'; text: string }[]>([
+    { role: 'ai', text: 'Hello! I am your Regal Jan Seva Assistant. How can I help you with government services today?' }
+  ]);
+  const [input, setInput] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, isTyping]);
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+
+    const userText = input.trim();
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', text: userText }]);
+    setIsTyping(true);
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const chat = ai.chats.create({
+        model: 'gemini-3-flash-preview',
+        config: {
+          systemInstruction: "You are a helpful AI assistant for Regal Jan Seva Kendra, a CSC (Common Service Centre). Answer user queries about government services like Aadhaar updates, PAN card applications, AePS banking, e-District services (caste/income/domicile certificates), ITR filing, and insurance. Keep responses professional, clear, and helpful. If asked about office location, say it is near the Tehsil Office at Regal Chowk.",
+        },
+      });
+
+      const response = await chat.sendMessage({ message: userText });
+      const aiResponse = response.text || "I'm sorry, I couldn't process that request.";
+      
+      setMessages(prev => [...prev, { role: 'ai', text: aiResponse }]);
+    } catch (error) {
+      console.error("AI Error:", error);
+      setMessages(prev => [...prev, { role: 'ai', text: "I'm having trouble connecting right now. Please try again or visit our center." }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  return (
+    <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-end">
+      {isOpen && (
+        <div className="mb-4 w-[350px] md:w-[400px] h-[500px] bg-white border border-slate-200 shadow-2xl rounded-[15px] flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+          {/* Header */}
+          <div className="bg-blue-600 p-4 text-white flex justify-between items-center">
+            <div className="flex items-center space-x-2">
+              <div className="bg-white/20 p-1.5 rounded-lg">
+                <Bot size={20} />
+              </div>
+              <div>
+                <h4 className="font-bold text-lg">Regal AI Assistant</h4>
+                <p className="text-[10px] text-blue-100 uppercase tracking-widest font-black">Always Online</p>
+              </div>
+            </div>
+            <button onClick={() => setIsOpen(false)} className="hover:bg-white/10 p-1.5 rounded-lg transition-colors">
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Messages Area */}
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+            {messages.map((m, i) => (
+              <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[80%] p-3 rounded-[15px] text-sm ${
+                  m.role === 'user' 
+                  ? 'bg-blue-600 text-white rounded-tr-none' 
+                  : 'bg-white text-slate-700 shadow-sm border border-slate-100 rounded-tl-none'
+                }`}>
+                  <p className="whitespace-pre-wrap">{m.text}</p>
+                </div>
+              </div>
+            ))}
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="bg-white text-slate-700 p-3 rounded-[15px] rounded-tl-none shadow-sm border border-slate-100 flex items-center space-x-2">
+                  <Loader2 size={14} className="animate-spin text-blue-600" />
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Thinking...</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Input Area */}
+          <div className="p-4 border-t border-slate-100 bg-white">
+            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-[15px] px-3 py-1 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+              <input 
+                type="text" 
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                placeholder="Ask about Aadhaar, PAN, etc..."
+                className="flex-1 bg-transparent border-none outline-none py-2 text-sm font-medium"
+              />
+              <button 
+                onClick={handleSend}
+                disabled={!input.trim() || isTyping}
+                className={`p-2 rounded-lg transition-all ${input.trim() ? 'text-blue-600 hover:bg-blue-50' : 'text-slate-300'}`}
+              >
+                <Send size={18} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className="bg-blue-600 text-white p-4 rounded-[15px] shadow-xl hover:bg-blue-700 hover:scale-110 active:scale-95 transition-all flex items-center space-x-2 group"
+      >
+        {isOpen ? <X size={24} /> : <MessageSquare size={24} />}
+        {!isOpen && <span className="font-bold text-sm pr-2">Ask Regal AI</span>}
+      </button>
+    </div>
+  );
+};
+
 const HomePage: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -49,7 +171,7 @@ const HomePage: React.FC = () => {
       {/* Navbar */}
       <nav className="border-b border-gray-100 py-4 px-6 md:px-12 flex justify-between items-center bg-white sticky top-0 z-50 shadow-sm">
         <div className="flex items-center space-x-3">
-          <div className="bg-blue-600 w-10 h-10 rounded-lg text-white flex items-center justify-center font-black tracking-tighter shadow-md shadow-blue-100">
+          <div className="bg-blue-600 w-10 h-10 rounded-[15px] text-white flex items-center justify-center font-black tracking-tighter shadow-md shadow-blue-100">
             RE
           </div>
           <div className="flex flex-col">
@@ -65,7 +187,7 @@ const HomePage: React.FC = () => {
         <div className="flex items-center space-x-4">
           <Link 
             to="/login" 
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-full font-semibold transition-all shadow-md shadow-blue-100 flex items-center"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-[15px] font-semibold transition-all shadow-md shadow-blue-100 flex items-center"
           >
             Staff Login
           </Link>
@@ -95,7 +217,7 @@ const HomePage: React.FC = () => {
                     {slide.subtitle}
                   </p>
                   <div className="flex justify-center gap-4">
-                    <a href="#services" className="bg-blue-600 text-white px-8 py-4 rounded-xl font-bold shadow-xl hover:bg-blue-700 transition-all flex items-center">
+                    <a href="#services" className="bg-blue-600 text-white px-8 py-4 rounded-[15px] font-bold shadow-xl hover:bg-blue-700 transition-all flex items-center">
                       {slide.cta} <ChevronRight size={20} className="ml-2" />
                     </a>
                   </div>
@@ -137,9 +259,9 @@ const HomePage: React.FC = () => {
       </section>
 
       {/* Features/Stats */}
-      <section className="py-12 bg-white -mt-10 max-w-5xl mx-auto rounded-3xl shadow-xl z-10 px-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+      <section className="py-12 bg-white -mt-10 max-w-5xl mx-auto rounded-[15px] shadow-xl z-10 px-8 grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="flex items-start space-x-4">
-          <div className="bg-green-100 p-3 rounded-2xl text-green-600">
+          <div className="bg-green-100 p-3 rounded-[15px] text-green-600">
             <CheckCircle size={24} />
           </div>
           <div>
@@ -148,7 +270,7 @@ const HomePage: React.FC = () => {
           </div>
         </div>
         <div className="flex items-start space-x-4 border-l border-gray-100 pl-4 md:pl-8">
-          <div className="bg-blue-100 p-3 rounded-2xl text-blue-600">
+          <div className="bg-blue-100 p-3 rounded-[15px] text-blue-600">
             <Clock size={24} />
           </div>
           <div>
@@ -157,7 +279,7 @@ const HomePage: React.FC = () => {
           </div>
         </div>
         <div className="flex items-start space-x-4 border-l border-gray-100 pl-4 md:pl-8">
-          <div className="bg-purple-100 p-3 rounded-2xl text-purple-600">
+          <div className="bg-purple-100 p-3 rounded-[15px] text-purple-600">
             <Shield size={24} />
           </div>
           <div>
@@ -192,11 +314,11 @@ const HomePage: React.FC = () => {
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-12">
           <div>
             <div className="flex items-center space-x-3 text-white mb-6">
-              <div className="bg-blue-600 w-10 h-10 rounded text-white flex items-center justify-center font-black text-xs tracking-tighter">
+              <div className="bg-blue-600 w-10 h-10 rounded-[15px] text-white flex items-center justify-center font-black text-xs tracking-tighter">
                 RE
               </div>
               <div className="flex flex-col">
-                <span className="text-xl font-bold leading-none">Regal Jan Seva</span>
+                <span className="text-xl font-bold leading-none uppercase">Regal Jan Seva</span>
                 <span className="text-[6px] font-black text-blue-400 uppercase tracking-[0.5em] mt-1.5">INNOVATION IS OUR MOTTO</span>
               </div>
             </div>
@@ -227,7 +349,7 @@ const HomePage: React.FC = () => {
           <div>
             <h4 className="text-white font-bold mb-6">Staff Access</h4>
             <p className="mb-6">Authorized personnel can access the ERP dashboard below.</p>
-            <Link to="/login" className="bg-blue-600 text-white px-6 py-3 rounded-lg block text-center font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-900/40">
+            <Link to="/login" className="bg-blue-600 text-white px-6 py-3 rounded-[15px] block text-center font-bold hover:bg-blue-700 transition-colors shadow-lg shadow-blue-900/40">
               Access ERP Dashboard
             </Link>
           </div>
@@ -236,13 +358,16 @@ const HomePage: React.FC = () => {
           &copy; 2024 Regal Jan Seva Kendra. All Rights Reserved. CSC Authorized VLE.
         </div>
       </footer>
+
+      {/* AI Powered Chatbot */}
+      <AIChat />
     </div>
   );
 };
 
 const ServiceCard: React.FC<{ icon: React.ReactNode; title: string; desc: string }> = ({ icon, title, desc }) => (
-  <div className="bg-white p-8 rounded-3xl border border-gray-100 hover:border-blue-100 hover:shadow-2xl hover:shadow-blue-500/5 transition-all group cursor-pointer">
-    <div className="bg-blue-50 text-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 group-hover:bg-blue-600 group-hover:text-white transition-all">
+  <div className="bg-white p-8 rounded-[15px] border border-gray-100 hover:border-blue-100 hover:shadow-2xl hover:shadow-blue-500/5 transition-all group cursor-pointer">
+    <div className="bg-blue-50 text-blue-600 w-16 h-16 rounded-[15px] flex items-center justify-center mb-6 group-hover:bg-blue-600 group-hover:text-white transition-all">
       {icon}
     </div>
     <h4 className="text-xl font-bold text-slate-800 mb-3">{title}</h4>

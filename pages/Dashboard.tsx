@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -93,20 +94,20 @@ const Dashboard: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="bg-white dark:bg-slate-900 px-4 py-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-900 px-4 py-2 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-sm flex items-center gap-2">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span className="text-xs font-black text-slate-500 dark:text-slate-300 uppercase tracking-widest">System Online</span>
           </div>
           <button 
             onClick={() => navigate('/jobs')}
-            className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-3 rounded-2xl font-bold transition-all shadow-xl shadow-slate-200 dark:shadow-none hover:scale-105 active:scale-95 flex items-center gap-2"
+            className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-3 rounded-[15px] font-bold transition-all shadow-xl shadow-slate-200 dark:shadow-none hover:scale-105 active:scale-95 flex items-center gap-2"
           >
             <Zap size={18} /> New Billing
           </button>
         </div>
       </div>
 
-      <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-indigo-600 via-blue-700 to-indigo-900 p-8 md:p-12 text-white shadow-2xl shadow-blue-500/20">
+      <div className="relative overflow-hidden rounded-[15px] bg-gradient-to-br from-indigo-600 via-blue-700 to-indigo-900 p-8 md:p-12 text-white shadow-2xl shadow-blue-500/20">
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/20">
@@ -120,17 +121,17 @@ const Dashboard: React.FC = () => {
           </div>
           
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10">
+            <div className="bg-white/10 backdrop-blur-md p-6 rounded-[15px] border border-white/10">
               <p className="text-[10px] font-black uppercase tracking-widest text-blue-200 mb-2">Total Paid</p>
               <h4 className="text-3xl font-black">₹{stats.totalRevenue.toLocaleString()}</h4>
             </div>
-            <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10">
+            <div className="bg-white/10 backdrop-blur-md p-6 rounded-[15px] border border-white/10">
               <p className="text-[10px] font-black uppercase tracking-widest text-blue-200 mb-2">Open Credit</p>
               <h4 className="text-3xl font-black text-red-300">₹{stats.totalBalance.toLocaleString()}</h4>
             </div>
-            <div className="col-span-2 bg-white/5 p-6 rounded-3xl border border-white/5 flex items-center justify-between group cursor-pointer hover:bg-white/10 transition-all" onClick={() => navigate('/reports')}>
+            <div className="col-span-2 bg-white/5 p-6 rounded-[15px] border border-white/5 flex items-center justify-between group cursor-pointer hover:bg-white/10 transition-all" onClick={() => navigate('/reports')}>
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-white/10 rounded-[15px] flex items-center justify-center">
                   <FileText size={20} />
                 </div>
                 <div>
@@ -155,11 +156,11 @@ const Dashboard: React.FC = () => {
         <ShortcutButton onClick={() => navigate('/customers')} icon={<UserPlus size={20} />} label="New Customer" color="bg-blue-600" />
         <ShortcutButton onClick={() => navigate('/jobs')} icon={<PlusCircle size={20} />} label="New Invoice" color="bg-indigo-600" />
         <ShortcutButton onClick={() => navigate('/inventory')} icon={<Package size={20} />} label="Restock" color="bg-emerald-600" />
-        <ShortcutButton onClick={() => navigate('/reports')} icon={<FileText size={20} />} label="Audit Log" color="bg-slate-700 dark:bg-slate-800" />
+        <ShortcutButton onClick={() => navigate('/reports')} icon={<FileText size={20} />} label="Audit Log" color="bg-slate-700" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-12">
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-8 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-sm">
           <div className="flex justify-between items-center mb-10">
             <div>
               <h3 className="font-black text-slate-800 dark:text-white flex items-center text-lg uppercase tracking-tight">
@@ -180,14 +181,14 @@ const Dashboard: React.FC = () => {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 11, fontWeight: 700}} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 11, fontWeight: 700}} dx={-10} />
-                <Tooltip contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', padding: '16px'}} />
+                <Tooltip contentStyle={{borderRadius: '15px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', padding: '16px'}} />
                 <Area type="monotone" dataKey="amount" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#colorTrend)" animationDuration={1500} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col">
+        <div className="bg-white dark:bg-slate-900 p-8 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col">
           <div className="mb-6">
             <h3 className="font-black text-slate-800 dark:text-white flex items-center text-lg uppercase tracking-tight">
               <PieChartIcon size={20} className="mr-3 text-indigo-600" /> Revenue Split
@@ -208,76 +209,10 @@ const Dashboard: React.FC = () => {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '12px'}} />
+                  <Tooltip contentStyle={{borderRadius: '15px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '12px'}} />
                   <Legend verticalAlign="bottom" iconType="circle" formatter={(value) => <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{value}</span>} />
                 </PieChart>
               </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="font-black text-slate-800 dark:text-white text-lg uppercase tracking-tight">Recent Activity</h3>
-            <button onClick={() => navigate('/jobs')} className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline">View All</button>
-          </div>
-          <div className="space-y-6">
-            {jobs.length === 0 ? (
-              <div className="text-center py-12 text-slate-400">No active operations</div>
-            ) : (
-              jobs.slice(-5).reverse().map(job => (
-                <div key={job.id} onClick={() => navigate('/jobs')} className="flex items-center justify-between group cursor-pointer p-2 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
-                  <div className="flex items-center space-x-4">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${
-                      job.status === 'COMPLETED' ? 'bg-green-100 text-green-600' : 
-                      job.status === 'PENDING' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'
-                    }`}>
-                      <Briefcase size={20} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-slate-800 dark:text-slate-100">
-                        {job.items.length === 1 ? (services.find(s => s.id === job.items[0].serviceId)?.name || 'Custom') : `${job.items.length} Services Bundle`}
-                      </p>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">#{job.id.slice(-4)}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-black text-slate-900 dark:text-white">₹{job.totalAmount}</p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="font-black text-slate-800 dark:text-white text-lg uppercase tracking-tight">Stock Warnings</h3>
-            {stats.lowStockCount > 0 && <span className="bg-red-50 text-red-600 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">{stats.lowStockCount} Items</span>}
-          </div>
-          <div className="space-y-4">
-            {inventory.filter(i => i.quantity <= i.minStock).length === 0 ? (
-              <div className="text-center py-16 text-slate-400">
-                <Package size={40} className="mx-auto mb-3 opacity-10" />
-                <p className="text-xs font-black uppercase tracking-widest">Inventory Fully Stocked</p>
-              </div>
-            ) : (
-              inventory.filter(i => i.quantity <= i.minStock).map(item => (
-                <div key={item.id} className="p-4 bg-red-50/50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-900/20 flex items-center justify-between group">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 text-red-600 rounded-xl flex items-center justify-center">
-                      <AlertTriangle size={20} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-black text-slate-800 dark:text-slate-100">{item.name}</p>
-                      <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest mt-0.5">Only {item.quantity} {item.unit} left</p>
-                    </div>
-                  </div>
-                  <button onClick={() => navigate('/inventory')} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-100 rounded-xl transition-all"><PlusCircle size={20} /></button>
-                </div>
-              ))
             )}
           </div>
         </div>
@@ -296,9 +231,9 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string; 
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-2xl transition-all group">
+    <div className="bg-white dark:bg-slate-900 p-8 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-2xl transition-all group">
       <div className="flex justify-between items-start mb-6">
-        <div className={`${colorMap[color]} w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner`}>
+        <div className={`${colorMap[color]} w-14 h-14 rounded-[15px] flex items-center justify-center shadow-inner`}>
           {icon}
         </div>
         <div className={`flex items-center space-x-1 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${positive ? 'text-green-600 bg-green-50 dark:bg-green-900/10' : 'text-red-600 bg-red-50 dark:bg-red-900/10'}`}>
@@ -314,8 +249,8 @@ const StatCard: React.FC<{ icon: React.ReactNode; label: string; value: string; 
 };
 
 const ShortcutButton: React.FC<{ onClick: () => void; icon: React.ReactNode; label: string; color: string }> = ({ onClick, icon, label, color }) => (
-  <button onClick={onClick} className="flex flex-col items-center justify-center gap-3 p-6 bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group active:scale-95">
-    <div className={`${color} text-white p-3 rounded-2xl shadow-lg group-hover:scale-110 transition-transform`}>
+  <button onClick={onClick} className="flex flex-col items-center justify-center gap-3 p-6 bg-white dark:bg-slate-900 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl transition-all group active:scale-95">
+    <div className={`${color} text-white p-3 rounded-[15px] shadow-lg group-hover:scale-110 transition-transform`}>
       {icon}
     </div>
     <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-[0.2em]">{label}</span>

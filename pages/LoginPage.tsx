@@ -141,7 +141,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[120px] animate-pulse"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/20 rounded-full blur-[120px] animate-pulse delay-700"></div>
           
-          {/* Animated Icons (Vector Elements) */}
           <div className="absolute top-1/4 left-1/4 animate-bounce duration-[3000ms] text-blue-500/40">
             <Cpu size={120} strokeWidth={0.5} />
           </div>
@@ -150,10 +149,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
           </div>
         </div>
 
-        {/* Content Overlay */}
         <div className="relative z-10 w-full flex flex-col justify-between p-16">
           <div className="flex items-center space-x-4 group">
-            <div className="bg-blue-600 w-16 h-16 rounded-2xl text-white shadow-2xl shadow-blue-500/50 group-hover:rotate-12 transition-transform duration-500 flex items-center justify-center font-black text-2xl tracking-tighter">
+            <div className="bg-blue-600 w-16 h-16 rounded-[15px] text-white shadow-2xl shadow-blue-500/50 group-hover:rotate-12 transition-transform duration-500 flex items-center justify-center font-black text-2xl tracking-tighter">
               RE
             </div>
             <div className="flex flex-col">
@@ -174,7 +172,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
               </h1>
             </div>
 
-            {/* Service Grid - Animated Vector Cards */}
             <div className="grid grid-cols-2 gap-4">
               <ServiceLink 
                 icon={<Fingerprint size={20} />} 
@@ -216,9 +213,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
         </div>
       </div>
 
-      {/* Right Side: Login Panel */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8 md:p-16 relative">
-        {/* Subtle background pattern for right side in light mode */}
         <div className="absolute inset-0 dark:hidden opacity-[0.03] pointer-events-none">
           <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
             <rect width="100%" height="100%" fill="url(#grid)" />
@@ -228,7 +223,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
         <div className="w-full max-w-md animate-in fade-in slide-in-from-right-8 duration-700 relative z-10">
           <div className="mb-12">
             <div className="lg:hidden flex items-center space-x-3 mb-8">
-              <div className="bg-blue-600 w-12 h-12 rounded-xl text-white flex items-center justify-center font-black tracking-tighter">
+              <div className="bg-blue-600 w-12 h-12 rounded-[15px] text-white flex items-center justify-center font-black tracking-tighter">
                 RE
               </div>
               <div className="flex flex-col">
@@ -256,9 +251,9 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
             )}
           </div>
 
-          <div className="bg-white dark:bg-slate-900/50 p-10 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-none backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900/50 p-10 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-2xl shadow-slate-200/50 dark:shadow-none backdrop-blur-sm">
             {(error || successMsg) && (
-              <div className={`mb-8 p-4 border rounded-2xl flex items-center space-x-3 text-xs font-black uppercase tracking-widest animate-in slide-in-from-top-2 ${
+              <div className={`mb-8 p-4 border rounded-[15px] flex items-center space-x-3 text-xs font-black uppercase tracking-widest animate-in slide-in-from-top-2 ${
                 error ? 'bg-rose-50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-900/20 text-rose-600 dark:text-rose-400' 
                       : 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/20 text-emerald-600 dark:text-emerald-400'
               }`}>
@@ -277,7 +272,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
                       type="text" 
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="w-full pl-14 pr-6 py-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-black outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
+                      className="w-full pl-14 pr-6 py-4 rounded-[15px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-black outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
                       placeholder="Enter identity"
                       required
                     />
@@ -292,7 +287,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
                       type="password" 
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-14 pr-6 py-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-black outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
+                      className="w-full pl-14 pr-6 py-4 rounded-[15px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-black outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-700"
                       placeholder="••••••••"
                       required
                     />
@@ -324,7 +319,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
                 <button 
                   type="submit" 
                   disabled={isLoading}
-                  className="w-full bg-slate-900 dark:bg-white text-white dark:text-black py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-xl shadow-slate-200 dark:shadow-none active:scale-[0.98] flex items-center justify-center group"
+                  className="w-full bg-slate-900 dark:bg-white text-white dark:text-black py-5 rounded-[15px] font-black text-xs uppercase tracking-[0.2em] hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-xl shadow-slate-200 dark:shadow-none active:scale-[0.98] flex items-center justify-center group"
                 >
                   {isLoading ? (
                     <Loader2 className="animate-spin" size={20} />
@@ -343,12 +338,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
                     <div className="space-y-3">
                       <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] ml-2">Administrative Email</label>
                       <div className="relative group">
-                        <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
                         <input 
                           type="email" 
                           value={recoveryEmail}
                           onChange={(e) => setRecoveryEmail(e.target.value)}
-                          className="w-full pl-14 pr-6 py-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-black outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                          className="w-full pl-14 pr-6 py-4 rounded-[15px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-black outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                           placeholder="admin@regal-erp.com"
                           required
                         />
@@ -357,7 +352,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
                     <button 
                       type="submit" 
                       disabled={isLoading}
-                      className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center group"
+                      className="w-full bg-blue-600 text-white py-5 rounded-[15px] font-black text-xs uppercase tracking-[0.2em] hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20 flex items-center justify-center group"
                     >
                       {isLoading ? <Loader2 className="animate-spin" size={20} /> : <span>Verify Identity</span>}
                     </button>
@@ -372,7 +367,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
                           type="password" 
                           value={newPassword}
                           onChange={(e) => setNewPassword(e.target.value)}
-                          className="w-full pl-14 pr-6 py-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-black outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
+                          className="w-full pl-14 pr-6 py-4 rounded-[15px] bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-black outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all"
                           placeholder="••••••••"
                           required
                         />
@@ -381,7 +376,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
                     <button 
                       type="submit" 
                       disabled={isLoading}
-                      className="w-full bg-emerald-600 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-500/20 flex items-center justify-center group"
+                      className="w-full bg-emerald-600 text-white py-5 rounded-[15px] font-black text-xs uppercase tracking-[0.2em] hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-500/20 flex items-center justify-center group"
                     >
                       {isLoading ? <Loader2 className="animate-spin" size={20} /> : <span>Save Security Policy</span>}
                     </button>
@@ -430,7 +425,7 @@ const ServiceLink: React.FC<ServiceLinkProps> = ({ icon, title, desc, color }) =
   };
 
   return (
-    <div className={`p-5 rounded-3xl border backdrop-blur-sm group hover:scale-[1.02] transition-all duration-300 ${colors[color]}`}>
+    <div className={`p-5 rounded-[15px] border backdrop-blur-sm group hover:scale-[1.02] transition-all duration-300 ${colors[color]}`}>
       <div className="mb-4">{icon}</div>
       <h4 className="text-sm font-black text-white uppercase tracking-tight mb-1">{title}</h4>
       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">{desc}</p>

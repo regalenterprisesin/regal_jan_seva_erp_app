@@ -16,7 +16,8 @@
     "lucide-react": "^0.469.0",
     "recharts": "^2.15.0",
     "clsx": "^2.1.1",
-    "tailwind-merge": "^2.5.5"
+    "tailwind-merge": "^2.5.5",
+    "@google/genai": "^0.2.1"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../db';
 import { Customer } from '../types';
@@ -121,7 +122,6 @@ const CustomerManagement: React.FC = () => {
       console.error(err);
       alert('Failed to export customer data.');
     } finally {
-      // Small timeout to allow UI thread to breathe since XLSX.writeFile can be blocking
       setTimeout(() => setIsProcessing(false), 500);
     }
   };
@@ -178,7 +178,7 @@ const CustomerManagement: React.FC = () => {
     <div className="space-y-6">
       {isProcessing && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-slate-950 p-10 rounded-[2.5rem] shadow-2xl flex flex-col items-center space-y-4 border border-slate-100 dark:border-slate-800">
+          <div className="bg-white dark:bg-slate-950 p-10 rounded-[15px] shadow-2xl flex flex-col items-center space-y-4 border border-slate-100 dark:border-slate-800">
             <Loader2 className="animate-spin text-blue-600" size={48} />
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">Synchronizing Database...</p>
           </div>
@@ -194,12 +194,12 @@ const CustomerManagement: React.FC = () => {
               placeholder="Search directory..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none focus:border-blue-500 transition-all shadow-sm"
+              className="w-full pl-12 pr-4 py-3 rounded-[15px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none focus:border-blue-500 transition-all shadow-sm"
             />
           </div>
-          <div className="flex bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shrink-0 shadow-sm">
-            <button onClick={() => setView('LIST')} className={`p-2.5 rounded-lg transition-all ${view === 'LIST' ? 'bg-blue-600 text-white' : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}><List size={20}/></button>
-            <button onClick={() => setView('GRID')} className={`p-2.5 rounded-lg transition-all ${view === 'GRID' ? 'bg-blue-600 text-white' : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}><LayoutGrid size={20}/></button>
+          <div className="flex bg-white dark:bg-slate-900 p-1 rounded-[15px] border border-slate-200 dark:border-slate-800 shrink-0 shadow-sm">
+            <button onClick={() => setView('LIST')} className={`p-2.5 rounded-[15px] transition-all ${view === 'LIST' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}><List size={20}/></button>
+            <button onClick={() => setView('GRID')} className={`p-2.5 rounded-[15px] transition-all ${view === 'GRID' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}><LayoutGrid size={20}/></button>
           </div>
         </div>
         
@@ -213,8 +213,7 @@ const CustomerManagement: React.FC = () => {
           />
           <button 
             onClick={() => fileInputRef.current?.click()}
-            className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center space-x-2 hover:bg-emerald-600 hover:text-white transition-all shadow-sm active:scale-95 border border-slate-200 dark:border-slate-700"
-            title="Import from Excel"
+            className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white px-6 py-3 rounded-[15px] font-black text-xs uppercase tracking-widest flex items-center space-x-2 hover:bg-emerald-600 hover:text-white transition-all shadow-sm border border-slate-200 dark:border-slate-700"
           >
             <Upload size={18} />
             <span className="hidden sm:inline">Import</span>
@@ -222,8 +221,7 @@ const CustomerManagement: React.FC = () => {
 
           <button 
             onClick={handleExportExcel}
-            className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center space-x-2 hover:bg-blue-600 hover:text-white transition-all shadow-sm active:scale-95 border border-slate-200 dark:border-slate-700"
-            title="Export to Excel"
+            className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white px-6 py-3 rounded-[15px] font-black text-xs uppercase tracking-widest flex items-center space-x-2 hover:bg-blue-600 hover:text-white transition-all shadow-sm border border-slate-200 dark:border-slate-700"
           >
             <Download size={18} />
             <span className="hidden sm:inline">Export</span>
@@ -231,7 +229,7 @@ const CustomerManagement: React.FC = () => {
           
           <button 
             onClick={() => openModal()}
-            className="bg-slate-900 dark:bg-white text-white dark:text-black px-8 py-3 rounded-xl font-black text-xs uppercase tracking-widest flex items-center space-x-2 hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-xl active:scale-95"
+            className="bg-slate-900 dark:bg-white text-white dark:text-black px-8 py-3 rounded-[15px] font-black text-xs uppercase tracking-widest flex items-center space-x-2 hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-xl"
           >
             <Plus size={18} />
             <span>Add Client</span>
@@ -240,7 +238,7 @@ const CustomerManagement: React.FC = () => {
       </div>
 
       {view === 'LIST' ? (
-        <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden overflow-x-auto">
+        <div className="bg-white dark:bg-slate-900 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-100 dark:border-slate-800">
@@ -256,18 +254,18 @@ const CustomerManagement: React.FC = () => {
                 <tr key={customer.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                   <td className="px-8 py-5">
                     <div className="font-black text-slate-900 dark:text-slate-100">{customer.name}</div>
-                    <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest truncate max-w-[200px]">{customer.address || 'No Address'}</div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-[200px]">{customer.address || 'No Address'}</div>
                   </td>
                   <td className="px-6 py-5">
-                    <div className="text-sm font-bold text-slate-600 dark:text-slate-300">{customer.phone}</div>
+                    <div className="text-sm font-bold text-slate-600 dark:text-slate-400">{customer.phone}</div>
                   </td>
                   <td className="px-6 py-5 font-mono text-base tracking-widest text-blue-600 dark:text-blue-400">
                     {customer.aadhaarNumber ? customer.aadhaarNumber.replace(/(\d{4})/g, '$1 ').trim() : 'NOT SET'}
                   </td>
-                  <td className="px-6 py-5 text-base font-bold text-slate-400 dark:text-slate-500">{new Date(customer.createdAt).toLocaleDateString('en-IN')}</td>
+                  <td className="px-6 py-5 text-base font-bold text-slate-400 dark:text-slate-600">{new Date(customer.createdAt).toLocaleDateString('en-IN')}</td>
                   <td className="px-8 py-5 text-right space-x-2">
-                    <button onClick={() => openModal(customer)} className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 transition-all"><Edit size={16} /></button>
-                    <button onClick={() => handleDelete(customer.id)} className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-700 transition-all"><Trash2 size={16} /></button>
+                    <button onClick={() => openModal(customer)} className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-[15px] text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 transition-all"><Edit size={16} /></button>
+                    <button onClick={() => handleDelete(customer.id)} className="p-2.5 bg-slate-100 dark:bg-slate-800 rounded-[15px] text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-700 transition-all"><Trash2 size={16} /></button>
                   </td>
                 </tr>
               ))}
@@ -277,21 +275,21 @@ const CustomerManagement: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCustomers.map(customer => (
-            <div key={customer.id} className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] border border-slate-100 dark:border-slate-800 shadow-xl hover:border-blue-500/50 transition-all group relative overflow-hidden">
+            <div key={customer.id} className="bg-white dark:bg-slate-900 p-8 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-xl hover:border-blue-500/50 transition-all group relative overflow-hidden">
               <div className="flex justify-between items-start mb-6">
-                <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-xl border border-slate-200 dark:border-slate-700 shadow-inner group-hover:scale-110 transition-transform">
+                <div className="w-14 h-14 rounded-[15px] bg-slate-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black text-xl border border-slate-100 dark:border-slate-800 shadow-inner group-hover:scale-110 transition-transform">
                   {customer.name[0]}
                 </div>
                 <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => openModal(customer)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700"><Edit size={16}/></button>
-                  <button onClick={() => handleDelete(customer.id)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 border border-slate-200 dark:border-slate-700"><Trash2 size={16}/></button>
+                  <button onClick={() => openModal(customer)} className="p-2 bg-slate-50 dark:bg-slate-800 rounded-[15px] text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white border border-slate-100 dark:border-slate-800"><Edit size={16}/></button>
+                  <button onClick={() => handleDelete(customer.id)} className="p-2 bg-slate-50 dark:bg-slate-800 rounded-[15px] text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 border border-slate-100 dark:border-slate-800"><Trash2 size={16}/></button>
                 </div>
               </div>
               <h3 className="font-black text-lg text-slate-900 dark:text-slate-100 mb-4">{customer.name}</h3>
               <div className="space-y-3 mb-6">
-                <div className="flex items-center text-xs font-bold text-slate-500 dark:text-slate-400"><Phone size={14} className="mr-3 text-blue-600 dark:text-blue-500"/> {customer.phone}</div>
-                <div className="flex items-center text-xs font-bold text-slate-500 dark:text-slate-400 tracking-widest font-mono"><Fingerprint size={14} className="mr-3 text-blue-600 dark:text-blue-500"/> {customer.aadhaarNumber ? customer.aadhaarNumber.replace(/(\d{4})/g, '$1 ').trim() : 'NO AADHAAR'}</div>
-                <div className="flex items-center text-xs font-bold text-slate-500 dark:text-slate-400"><MapPin size={14} className="mr-3 text-blue-600 dark:text-blue-500"/> <span className="truncate">{customer.address || 'No Address Provided'}</span></div>
+                <div className="flex items-center text-xs font-bold text-slate-500"><Phone size={14} className="mr-3 text-blue-600 dark:text-blue-400"/> {customer.phone}</div>
+                <div className="flex items-center text-xs font-bold text-slate-500 tracking-widest font-mono"><Fingerprint size={14} className="mr-3 text-blue-600 dark:text-blue-400"/> {customer.aadhaarNumber ? customer.aadhaarNumber.replace(/(\d{4})/g, '$1 ').trim() : 'NO AADHAAR'}</div>
+                <div className="flex items-center text-xs font-bold text-slate-500"><MapPin size={14} className="mr-3 text-blue-600 dark:text-blue-400"/> <span className="truncate">{customer.address || 'No Address Provided'}</span></div>
               </div>
             </div>
           ))}
@@ -299,24 +297,24 @@ const CustomerManagement: React.FC = () => {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 dark:bg-black/80 backdrop-blur-md">
-          <div className="bg-white dark:bg-slate-950 w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-in zoom-in duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-md">
+          <div className="bg-white dark:bg-slate-950 w-full max-w-lg rounded-[15px] shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden animate-in zoom-in duration-300">
             <div className="px-10 py-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
               <div>
                 <h3 className="text-2xl font-black text-slate-900 dark:text-white">{editingCustomer ? 'Update Profile' : 'New Client'}</h3>
-                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-500 uppercase tracking-[0.2em] mt-1">Personal & Security Data</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mt-1">Personal & Security Data</p>
               </div>
-              <button onClick={closeModal} className="p-3 bg-white dark:bg-slate-800 rounded-2xl text-slate-400 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm"><X size={20} /></button>
+              <button onClick={closeModal} className="p-3 bg-white dark:bg-slate-800 rounded-[15px] text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm"><X size={20} /></button>
             </div>
             <div className="p-10 space-y-6">
               <div>
                 <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2.5">Legal Full Name *</label>
-                <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none focus:border-blue-500 transition-all" placeholder="Enter name" />
+                <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-5 py-4 rounded-[15px] bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none focus:border-blue-500 transition-all" placeholder="Enter name" />
               </div>
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2.5">Contact Number *</label>
-                  <input type="text" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none focus:border-blue-500 transition-all" placeholder="+91" />
+                  <input type="text" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full px-5 py-4 rounded-[15px] bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none focus:border-blue-500 transition-all" placeholder="+91" />
                 </div>
                 <div>
                   <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2.5">Aadhaar (12-Digit)</label>
@@ -324,19 +322,19 @@ const CustomerManagement: React.FC = () => {
                     type="text" 
                     value={formData.aadhaarNumber.replace(/(\d{4})/g, '$1 ').trim()} 
                     onChange={handleAadhaarChange} 
-                    className="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-blue-700 dark:text-blue-400 font-mono tracking-widest outline-none focus:border-blue-500 transition-all" 
+                    className="w-full px-5 py-4 rounded-[15px] bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-blue-700 dark:text-blue-400 font-mono tracking-widest outline-none focus:border-blue-500 transition-all" 
                     placeholder="0000 0000 0000" 
                   />
                 </div>
               </div>
               <div>
                 <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2.5">Residential Address</label>
-                <textarea value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full px-5 py-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-100 font-medium outline-none focus:border-blue-500 min-h-[120px] resize-none" placeholder="Enter complete postal address..." />
+                <textarea value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full px-5 py-4 rounded-[15px] bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-700 dark:text-slate-300 font-medium outline-none focus:border-blue-500 min-h-[120px] resize-none" placeholder="Enter complete postal address..." />
               </div>
             </div>
             <div className="px-10 py-8 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex justify-end space-x-4">
               <button onClick={closeModal} className="px-6 py-3 font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[10px] hover:text-slate-900 dark:hover:text-white transition-colors">Cancel</button>
-              <button onClick={handleSave} className="bg-slate-900 dark:bg-white text-white dark:text-black px-10 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-xl active:scale-95 flex items-center space-x-2">
+              <button onClick={handleSave} className="bg-slate-900 dark:bg-white text-white dark:text-black px-10 py-3 rounded-[15px] font-black text-xs uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-blue-500 transition-all shadow-xl flex items-center space-x-2">
                 <Save size={18} />
                 <span>Save Record</span>
               </button>

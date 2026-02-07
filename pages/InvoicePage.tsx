@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../db';
-import { Customer, Service, Job, JobItem, JobStatus } from '../types';
+import { Customer, Service, Job, JobItem, JobStatus, PaymentStatus } from '../types';
 import { 
   User, Fingerprint, Smartphone, IndianRupee, Plus, 
-  Trash2, Save, Loader2, CheckCircle2, FileText, Search, UserCheck, X, ArrowLeft, Printer, Download, Edit
+  Trash2, Save, Loader2, CheckCircle2, FileText, Search, UserCheck, X, ArrowLeft, Printer, Download, Edit, Filter, Calendar
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -18,6 +19,11 @@ const InvoicePage: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [receiptJob, setReceiptJob] = useState<Job | null>(null);
+
+  // Registry Search/Filter States
+  const [registrySearch, setRegistrySearch] = useState('');
+  const [registryStatusFilter, setRegistryStatusFilter] = useState<'ALL' | PaymentStatus>('ALL');
+  const [registryDateFilter, setRegistryDateFilter] = useState('');
 
   // Form State
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -63,6 +69,24 @@ const InvoicePage: React.FC = () => {
       c.name.toLowerCase().includes(customerSearch.toLowerCase())
     ).slice(0, 5);
   }, [customerSearch, customers, isCustomerSelected]);
+
+  // Filtering logic for the Ledger Registry
+  const filteredJobs = useMemo(() => {
+    return jobs.filter(job => {
+      const customer = customers.find(c => c.id === job.customerId);
+      const customerName = customer?.name.toLowerCase() || '';
+      const invoiceId = job.id.toLowerCase();
+      
+      const matchesSearch = customerName.includes(registrySearch.toLowerCase()) || 
+                           invoiceId.includes(registrySearch.toLowerCase());
+      
+      const matchesStatus = registryStatusFilter === 'ALL' || job.paymentStatus === registryStatusFilter;
+      
+      const matchesDate = !registryDateFilter || job.createdAt.startsWith(registryDateFilter);
+      
+      return matchesSearch && matchesStatus && matchesDate;
+    });
+  }, [jobs, customers, registrySearch, registryStatusFilter, registryDateFilter]);
 
   const handleSelectCustomer = (id: string) => {
     setCustomerId(id);
@@ -240,7 +264,7 @@ const InvoicePage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="h-full w-full flex items-center justify-center">
+      <div className="h-full w-full flex items-center justify-center bg-slate-50 dark:bg-slate-950">
         <Loader2 className="animate-spin text-blue-500" size={40} />
       </div>
     );
@@ -251,7 +275,7 @@ const InvoicePage: React.FC = () => {
       <style>{styles}</style>
       
       {success && (
-        <div className="bg-emerald-500 text-white p-4 rounded-2xl flex items-center justify-center space-x-3 shadow-lg">
+        <div className="bg-emerald-500 text-white p-4 rounded-[15px] flex items-center justify-center space-x-3 shadow-lg">
           <CheckCircle2 size={24} />
           <span className="font-bold">Invoice committed successfully!</span>
         </div>
@@ -260,21 +284,60 @@ const InvoicePage: React.FC = () => {
       {view === 'LIST' ? (
         /* INVOICE LIST VIEW */
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h1 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Ledger Registry</h1>
               <p className="text-sm text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1">Transaction History</p>
             </div>
             <button 
               onClick={() => { resetForm(); setView('CREATE'); }}
-              className="bg-slate-900 dark:bg-white text-white dark:text-black px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-[0.1em] hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-xl active:scale-95 flex items-center space-x-3"
+              className="bg-slate-900 dark:bg-white text-white dark:text-black px-8 py-3 rounded-[15px] font-black text-xs uppercase tracking-[0.1em] hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-xl active:scale-95 flex items-center space-x-3"
             >
               <Plus size={18} />
               <span>Create Invoice</span>
             </button>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden">
+          {/* Search and Filters Bar */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white dark:bg-slate-900 p-6 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-sm">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input 
+                type="text" 
+                placeholder="Search Customer or ID..."
+                value={registrySearch}
+                onChange={(e) => setRegistrySearch(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 rounded-[15px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold outline-none focus:border-blue-500"
+              />
+            </div>
+            <div className="relative">
+              <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <select 
+                value={registryStatusFilter}
+                onChange={(e) => setRegistryStatusFilter(e.target.value as any)}
+                className="w-full pl-12 pr-4 py-3 rounded-[15px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold outline-none focus:border-blue-500 no-arrow"
+              >
+                <option value="ALL">All Payment Status</option>
+                <option value="PAID">Paid</option>
+                <option value="PARTIAL">Partial</option>
+                <option value="UNPAID">Unpaid</option>
+              </select>
+            </div>
+            <div className="relative">
+              <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input 
+                type="date" 
+                value={registryDateFilter}
+                onChange={(e) => setRegistryDateFilter(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 rounded-[15px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold outline-none focus:border-blue-500"
+              />
+              {registryDateFilter && (
+                <button onClick={() => setRegistryDateFilter('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X size={14}/></button>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden">
             <table className="w-full text-left">
               <thead className="bg-slate-50 dark:bg-slate-800/50 text-xs font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
                 <tr>
@@ -282,19 +345,19 @@ const InvoicePage: React.FC = () => {
                   <th className="px-6 py-5">Customer</th>
                   <th className="px-6 py-5">Date</th>
                   <th className="px-6 py-5">Amount</th>
-                  <th className="px-6 py-5">Pending</th>
+                  <th className="px-6 py-5">Status</th>
                   <th className="px-8 py-5 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                {jobs.length === 0 ? (
+                {filteredJobs.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-8 py-20 text-center text-sm font-bold text-slate-300 uppercase tracking-widest italic">
-                      No invoices found in the registry.
+                      {jobs.length === 0 ? "No invoices found in the registry." : "No records match your search criteria."}
                     </td>
                   </tr>
                 ) : (
-                  jobs.map((job) => (
+                  filteredJobs.map((job) => (
                     <tr key={job.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                       <td className="px-8 py-5">
                         <span className="text-sm font-black text-slate-900 dark:text-slate-100">#{job.id.slice(-6).toUpperCase()}</span>
@@ -311,8 +374,12 @@ const InvoicePage: React.FC = () => {
                         <span className="text-sm font-black text-slate-900 dark:text-white">₹{job.totalAmount}</span>
                       </td>
                       <td className="px-6 py-5">
-                        <span className={`text-xs font-black px-3 py-1 rounded-full uppercase tracking-tighter ${job.balance === 0 ? 'text-emerald-500 bg-emerald-500/10' : 'text-rose-500 bg-rose-500/10'}`}>
-                          ₹{job.balance}
+                        <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-tighter border ${
+                          job.paymentStatus === 'PAID' ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' : 
+                          job.paymentStatus === 'PARTIAL' ? 'text-amber-500 bg-amber-500/10 border-amber-500/20' : 
+                          'text-rose-500 bg-rose-500/10 border-rose-500/20'
+                        }`}>
+                          {job.paymentStatus}
                         </span>
                       </td>
                       <td className="px-8 py-5 text-right space-x-2">
@@ -329,12 +396,12 @@ const InvoicePage: React.FC = () => {
         </div>
       ) : (
         /* INVOICE CREATE VIEW (Wide Panel Workflow) */
-        <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
+        <div className="bg-white dark:bg-slate-900 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
           <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex justify-between items-center">
             <div className="flex items-center space-x-4">
               <button 
                 onClick={() => setView('LIST')}
-                className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-xl text-slate-500 transition-colors"
+                className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-[15px] text-slate-500 transition-colors"
               >
                 <ArrowLeft size={20} />
               </button>
@@ -349,7 +416,7 @@ const InvoicePage: React.FC = () => {
           <div className="p-8 space-y-10">
             {/* Customer Search Row */}
             {!isCustomerSelected ? (
-              <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 relative">
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-[15px] border border-slate-100 dark:border-slate-800 relative">
                 <div className="max-w-xl mx-auto space-y-4">
                   <label className="text-sm font-bold text-slate-400 uppercase tracking-widest block ml-1 text-center">Type Customer Name to Search</label>
                   <div className="relative">
@@ -358,13 +425,13 @@ const InvoicePage: React.FC = () => {
                       type="text" 
                       value={customerSearch}
                       onChange={(e) => setCustomerSearch(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-semibold outline-none focus:border-blue-500 shadow-sm"
+                      className="w-full pl-12 pr-4 py-4 rounded-[15px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-semibold outline-none focus:border-blue-500 shadow-sm"
                       placeholder="Search by name..."
                     />
                   </div>
                   
                   {filteredCustomers.length > 0 && (
-                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-[15px] shadow-xl overflow-hidden divide-y divide-slate-100 dark:divide-slate-800">
                       {filteredCustomers.map(c => (
                         <div key={c.id} className="flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                           <div className="flex items-center space-x-3">
@@ -373,7 +440,7 @@ const InvoicePage: React.FC = () => {
                           </div>
                           <button 
                             onClick={() => handleSelectCustomer(c.id)}
-                            className="bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center space-x-2"
+                            className="bg-blue-600 text-white px-6 py-2 rounded-[15px] text-xs font-black uppercase tracking-widest hover:bg-blue-700 transition-all flex items-center space-x-2"
                           >
                             <UserCheck size={14} />
                             <span>Select</span>
@@ -386,10 +453,10 @@ const InvoicePage: React.FC = () => {
               </div>
             ) : (
               /* Selected Customer Info Bar */
-              <div className="grid grid-cols-12 gap-8 items-center bg-slate-50 dark:bg-slate-800/50 p-6 rounded-3xl border border-blue-500/20 shadow-lg animate-in slide-in-from-top-4 duration-300">
+              <div className="grid grid-cols-12 gap-8 items-center bg-slate-50 dark:bg-slate-800/50 p-6 rounded-[15px] border border-blue-500/20 shadow-lg animate-in slide-in-from-top-4 duration-300">
                 <div className="col-span-12 lg:col-span-4 space-y-2">
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block ml-1">Active Customer</label>
-                  <div className="flex items-center space-x-3 bg-white dark:bg-slate-900 px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm min-h-[46px]">
+                  <div className="flex items-center space-x-3 bg-white dark:bg-slate-900 px-5 py-3 rounded-[15px] border border-slate-200 dark:border-slate-700 shadow-sm min-h-[46px]">
                     <User className="text-blue-500" size={18} />
                     <span className="text-sm font-black text-slate-800 dark:text-white uppercase">{selectedCustomer?.name}</span>
                     <button onClick={handleResetCustomer} className="ml-auto p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400">
@@ -400,7 +467,7 @@ const InvoicePage: React.FC = () => {
 
                 <div className="col-span-12 lg:col-span-4 space-y-2">
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block ml-1">Aadhaar Identity</label>
-                  <div className="flex items-center space-x-3 bg-white dark:bg-slate-900 px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm min-h-[46px]">
+                  <div className="flex items-center space-x-3 bg-white dark:bg-slate-900 px-5 py-3 rounded-[15px] border border-slate-200 dark:border-slate-700 shadow-sm min-h-[46px]">
                     <Fingerprint size={18} className="text-slate-400" />
                     <span className="text-sm font-mono font-bold tracking-widest text-slate-700 dark:text-slate-300">
                       {selectedCustomer?.aadhaarNumber ? selectedCustomer.aadhaarNumber.replace(/(\d{4})/g, '$1 ').trim() : '---- ---- ----'}
@@ -410,7 +477,7 @@ const InvoicePage: React.FC = () => {
 
                 <div className="col-span-12 lg:col-span-4 space-y-2">
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block ml-1">Mobile Access</label>
-                  <div className="flex items-center space-x-3 bg-white dark:bg-slate-900 px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm min-h-[46px]">
+                  <div className="flex items-center space-x-3 bg-white dark:bg-slate-900 px-5 py-3 rounded-[15px] border border-slate-200 dark:border-slate-700 shadow-sm min-h-[46px]">
                     <Smartphone size={18} className="text-slate-400" />
                     <span className="text-sm font-bold text-slate-700 dark:text-slate-300">
                       {selectedCustomer?.phone || '+91 00000 00000'}
@@ -425,13 +492,13 @@ const InvoicePage: React.FC = () => {
               <div className="space-y-10 animate-in fade-in duration-500">
                 <div className="space-y-4">
                   <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest ml-1">Item Staging Area</h3>
-                  <div className="grid grid-cols-12 gap-4 items-end bg-white dark:bg-slate-950 p-6 rounded-[2rem] border border-blue-500/20 shadow-xl">
+                  <div className="grid grid-cols-12 gap-4 items-end bg-white dark:bg-slate-950 p-6 rounded-[15px] border border-blue-500/20 shadow-xl">
                     <div className="col-span-12 lg:col-span-3 space-y-2">
                       <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block ml-1">Service Particulars</label>
                       <select 
                         value={currentServiceId}
                         onChange={(e) => handleServiceSelect(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold outline-none focus:border-blue-500 no-arrow"
+                        className="w-full px-4 py-3 rounded-[15px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold outline-none focus:border-blue-500 no-arrow"
                       >
                         <option value="">Choose Domain...</option>
                         {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -445,7 +512,7 @@ const InvoicePage: React.FC = () => {
                         min="1" 
                         value={quantity} 
                         onChange={(e) => setQuantity(Number(e.target.value))}
-                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold outline-none focus:border-blue-500 no-spinner"
+                        className="w-full px-4 py-3 rounded-[15px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold outline-none focus:border-blue-500 no-spinner"
                       />
                     </div>
 
@@ -455,7 +522,7 @@ const InvoicePage: React.FC = () => {
                         type="number" 
                         value={rate} 
                         onChange={(e) => setRate(Number(e.target.value))}
-                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold outline-none focus:border-blue-500 no-spinner"
+                        className="w-full px-4 py-3 rounded-[15px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold outline-none focus:border-blue-500 no-spinner"
                       />
                     </div>
 
@@ -465,13 +532,13 @@ const InvoicePage: React.FC = () => {
                         type="number" 
                         value={discount} 
                         onChange={(e) => setDiscount(Number(e.target.value))}
-                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-rose-500 outline-none focus:border-rose-500 no-spinner"
+                        className="w-full px-4 py-3 rounded-[15px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold text-rose-500 outline-none focus:border-rose-500 no-spinner"
                       />
                     </div>
 
                     <div className="col-span-6 lg:col-span-2 space-y-2">
                       <label className="text-xs font-bold text-slate-400 uppercase tracking-widest block ml-1">Line Total</label>
-                      <div className="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-black text-slate-900 dark:text-white min-h-[46px] flex items-center">
+                      <div className="w-full px-4 py-3 rounded-[15px] bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-black text-slate-900 dark:text-white min-h-[46px] flex items-center">
                         ₹{currentSubtotal}
                       </div>
                     </div>
@@ -481,7 +548,7 @@ const InvoicePage: React.FC = () => {
                       <select 
                         value={status}
                         onChange={(e) => setStatus(e.target.value as JobStatus)}
-                        className="w-full px-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold outline-none focus:border-blue-500 no-arrow"
+                        className="w-full px-4 py-3 rounded-[15px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-sm font-bold outline-none focus:border-blue-500 no-arrow"
                       >
                         <option value="PENDING">Pending</option>
                         <option value="IN_PROGRESS">Processing</option>
@@ -492,7 +559,7 @@ const InvoicePage: React.FC = () => {
                     <div className="col-span-12 lg:col-span-1">
                       <button 
                         onClick={addServiceToList}
-                        className="w-full p-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center group active:scale-95"
+                        className="w-full p-3 bg-blue-600 text-white rounded-[15px] hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center group active:scale-95"
                         title="Add to Bill"
                       >
                         <Plus size={24} className="group-hover:rotate-90 transition-transform" />
@@ -502,7 +569,7 @@ const InvoicePage: React.FC = () => {
                 </div>
 
                 <div className="space-y-6">
-                  <div className="bg-white dark:bg-slate-950 rounded-[2rem] border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm min-h-[200px]">
+                  <div className="bg-white dark:bg-slate-950 rounded-[15px] border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm min-h-[200px]">
                     <table className="w-full text-left">
                       <thead className="bg-slate-50 dark:bg-slate-800/50 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800">
                         <tr>
@@ -554,7 +621,7 @@ const InvoicePage: React.FC = () => {
                           type="number"
                           value={paidAmount}
                           onChange={(e) => setPaidAmount(Number(e.target.value))}
-                          className="w-full pl-12 pr-6 py-4 rounded-2xl bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-xl font-black text-emerald-600 outline-none focus:border-emerald-500 shadow-sm no-spinner"
+                          className="w-full pl-12 pr-6 py-4 rounded-[15px] bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-xl font-black text-emerald-600 outline-none focus:border-emerald-500 shadow-sm no-spinner"
                           placeholder="0"
                         />
                       </div>
@@ -565,63 +632,60 @@ const InvoicePage: React.FC = () => {
             )}
           </div>
 
-          {/* Footer: Detailed Totals */}
-          {isCustomerSelected && (
-            <div className="px-8 py-8 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 flex flex-col xl:flex-row justify-between items-center gap-10">
-              <div className="flex flex-wrap items-center gap-10">
-                <div className="space-y-1">
-                  <span className="text-xs font-black text-slate-400 uppercase tracking-widest block ml-1">Gross Total Bill</span>
-                  <div className="flex items-center text-2xl font-bold text-slate-400 tracking-tighter opacity-60">
-                    ₹ {totals.gross}
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-xs font-black text-rose-500 uppercase tracking-widest block ml-1">Total Discount</span>
-                  <div className="flex items-center text-2xl font-black text-rose-600 tracking-tighter">
-                    - ₹ {totals.totalDiscount}
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block ml-1">Net To Be Paid</span>
-                  <div className="flex items-center text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
-                    <IndianRupee size={28} className="mr-1 opacity-20" /> {totals.netTotal}
-                  </div>
-                </div>
-
-                <div className="flex items-center space-x-8 bg-white dark:bg-slate-950 px-8 py-4 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-inner">
-                  <div className="space-y-1">
-                    <span className="text-xs font-black text-rose-600 uppercase tracking-widest block ml-1">Pending Amount</span>
-                    <div className={`text-2xl font-black tracking-tighter ${totals.pending > 0 ? 'text-rose-600' : 'text-emerald-500'}`}>
-                      ₹ {totals.pending}
-                    </div>
-                  </div>
+          <div className="px-8 py-8 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 flex flex-col xl:flex-row justify-between items-center gap-10">
+            <div className="flex flex-wrap items-center gap-10">
+              <div className="space-y-1">
+                <span className="text-xs font-black text-slate-400 uppercase tracking-widest block ml-1">Gross Total Bill</span>
+                <div className="flex items-center text-2xl font-bold text-slate-400 tracking-tighter opacity-60">
+                  ₹ {totals.gross}
                 </div>
               </div>
 
-              <div className="flex items-center space-x-4 w-full xl:w-auto">
-                <button 
-                  onClick={() => { if(window.confirm("Abort current session? Data will be lost.")) setView('LIST'); }}
-                  className="flex-1 xl:flex-none px-6 py-2 font-bold text-slate-400 uppercase tracking-widest text-xs hover:text-slate-900 dark:hover:text-white transition-colors"
-                >
-                  Abort
-                </button>
-                <button 
-                  onClick={handleCommitInvoice}
-                  disabled={isSaving}
-                  className="flex-1 xl:flex-none bg-slate-900 dark:bg-white text-white dark:text-black px-8 py-2.5 rounded-xl font-bold text-xs uppercase tracking-[0.1em] hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-xl active:scale-95 flex items-center justify-center space-x-2"
-                >
-                  {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
-                  <span>Commit Ledger</span>
-                </button>
+              <div className="space-y-1">
+                <span className="text-xs font-black text-rose-500 uppercase tracking-widest block ml-1">Total Discount</span>
+                <div className="flex items-center text-2xl font-black text-rose-600 tracking-tighter">
+                  - ₹ {totals.totalDiscount}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest block ml-1">Net To Be Paid</span>
+                <div className="flex items-center text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
+                  <IndianRupee size={28} className="mr-1 opacity-20" /> {totals.netTotal}
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-8 bg-white dark:bg-slate-950 px-8 py-4 rounded-[15px] border border-slate-200 dark:border-slate-700 shadow-inner">
+                <div className="space-y-1">
+                  <span className="text-xs font-black text-rose-600 uppercase tracking-widest block ml-1">Pending Amount</span>
+                  <div className={`text-2xl font-black tracking-tighter ${totals.pending > 0 ? 'text-rose-600' : 'text-emerald-500'}`}>
+                    ₹ {totals.pending}
+                  </div>
+                </div>
               </div>
             </div>
-          )}
+
+            <div className="flex items-center space-x-4 w-full xl:w-auto">
+              <button 
+                onClick={() => { if(window.confirm("Abort current session? Data will be lost.")) setView('LIST'); }}
+                className="flex-1 xl:flex-none px-6 py-2 font-bold text-slate-400 uppercase tracking-widest text-xs hover:text-slate-900 dark:hover:text-white transition-colors"
+              >
+                Abort
+              </button>
+              <button 
+                onClick={handleCommitInvoice}
+                disabled={isSaving}
+                className="flex-1 xl:flex-none bg-slate-900 dark:bg-white text-white dark:text-black px-8 py-2.5 rounded-[15px] font-bold text-xs uppercase tracking-[0.1em] hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-xl active:scale-95 flex items-center justify-center space-x-2"
+              >
+                {isSaving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                <span>Commit Ledger</span>
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* RECEIPT TEMPLATE (Adapted from JobManagement) */}
+      {/* RECEIPT TEMPLATE */}
       {(receiptJob || isGeneratingPDF) && (
         <div className={`fixed inset-0 z-[100] bg-white pointer-events-none flex justify-center ${isGeneratingPDF ? 'opacity-100 overflow-visible' : 'opacity-0 print:opacity-100 print:relative print:z-auto print:block print:w-full'}`}>
           <div id="receipt-container-invoice" className="w-[80mm] p-6 bg-white text-black font-sans border border-gray-100 shadow-sm">

@@ -1,4 +1,5 @@
-import { User, Customer, Service, Job, InventoryItem } from './types';
+
+import { User, Customer, Service, Job, InventoryItem, CompanySettings } from './types';
 import * as XLSX from 'xlsx';
 
 const COLLECTIONS = {
@@ -6,7 +7,8 @@ const COLLECTIONS = {
   CUSTOMERS: 'customers',
   SERVICES: 'services',
   JOBS: 'jobs',
-  INVENTORY: 'inventory'
+  INVENTORY: 'inventory',
+  SETTINGS: 'settings'
 };
 
 // --- Storage Helpers ---
@@ -51,6 +53,15 @@ const DEFAULT_SERVICES: Service[] = [
   { id: 's2', name: 'PAN Card New', description: 'Application for fresh PAN card', basePrice: 150, category: 'UTI/IT' }
 ];
 
+const DEFAULT_SETTINGS: CompanySettings = {
+  companyName: 'Regal Jan Seva Kendra',
+  mobileNumber: '+91 98765 43210',
+  address: 'Shop No. 12, Main Market Road, Near Tehsil Office, Regal Chowk, India',
+  ownerName: 'Admin User',
+  email: 'contact@regaljsk.com',
+  website: 'www.regaljsk.com'
+};
+
 export const db = {
   users: {
     all: async () => storage.get<User>(COLLECTIONS.USERS),
@@ -82,6 +93,16 @@ export const db = {
     delete: async (id: string) => storage.remove(COLLECTIONS.INVENTORY, id)
   },
 
+  settings: {
+    get: async (): Promise<CompanySettings> => {
+      const data = localStorage.getItem(`regal_erp_${COLLECTIONS.SETTINGS}`);
+      return data ? JSON.parse(data) : DEFAULT_SETTINGS;
+    },
+    save: async (settings: CompanySettings) => {
+      localStorage.setItem(`regal_erp_${COLLECTIONS.SETTINGS}`, JSON.stringify(settings));
+    }
+  },
+
   auth: {
     getSession: async (): Promise<User | null> => {
       const storedId = localStorage.getItem('regal_erp_session_id');
@@ -106,6 +127,12 @@ export const db = {
     backup: async () => {
       const workbook = XLSX.utils.book_new();
       for (const [key, value] of Object.entries(COLLECTIONS)) {
+        if (key === 'SETTINGS') {
+          const settings = await db.settings.get();
+          const worksheet = XLSX.utils.json_to_sheet([settings]);
+          XLSX.utils.book_append_sheet(workbook, worksheet, value);
+          continue;
+        }
         const data = storage.get(value);
         const worksheet = XLSX.utils.json_to_sheet(data);
         XLSX.utils.book_append_sheet(workbook, worksheet, value);
@@ -139,12 +166,14 @@ export const db = {
             for (const collectionName of Object.values(COLLECTIONS)) {
               const sheet = workbook.Sheets[collectionName];
               if (sheet) {
-                // sheet_to_json with defval: null to handle missing cells gracefully
                 const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: null });
-                
-                // Perform light sanitization: ensure we only store arrays of objects
+                if (collectionName === COLLECTIONS.SETTINGS) {
+                  if (jsonData.length > 0) {
+                    localStorage.setItem(`regal_erp_${COLLECTIONS.SETTINGS}`, JSON.stringify(jsonData[0]));
+                  }
+                  continue;
+                }
                 const sanitizedData = jsonData.filter(item => item !== null && typeof item === 'object');
-                
                 storage.set(collectionName, sanitizedData);
               }
             }
@@ -168,6 +197,10 @@ export const db = {
     const services = await db.services.all();
     if (services.length === 0) {
       for (const s of DEFAULT_SERVICES) await db.services.save(s);
+    }
+    const currentSettings = localStorage.getItem(`regal_erp_${COLLECTIONS.SETTINGS}`);
+    if (!currentSettings) {
+      await db.settings.save(DEFAULT_SETTINGS);
     }
   },
 
