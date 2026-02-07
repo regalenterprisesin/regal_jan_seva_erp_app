@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { db } from '../db';
-import { CompanySettings } from '../types';
+import { CompanySettings } from '../types'; 
 import { 
   Building2, Phone, MapPin, User, Mail, Globe, Save, 
   Loader2, CheckCircle2, ShieldCheck, Briefcase
