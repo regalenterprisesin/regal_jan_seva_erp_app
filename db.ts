@@ -1,7 +1,9 @@
 
 import { User, Customer, Service, Job, InventoryItem, CompanySettings } from './types';
 import * as XLSX from 'xlsx';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+// --- Database Configuration ---
 const DB_NAME = 'RegalJSK_ERP_DB';
 const DB_VERSION = 1;
 const STORES = {
@@ -13,32 +15,36 @@ const STORES = {
   SETTINGS: 'settings'
 };
 
+// --- Cloud Connectivity (Supabase) ---
+// Note: These will be provided by Vercel environment variables.
+const SUPABASE_URL = process.env.SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+
+let supabase: SupabaseClient | null = null;
+if (SUPABASE_URL && SUPABASE_ANON_KEY) {
+  supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
+
 /**
- * Database Engine using IndexedDB for professional-grade browser storage.
- * This replaces the previous localStorage implementation with a proper
- * transactional database system.
+ * Enhanced Database Engine that handles both Local (IndexedDB) 
+ * and Server (Supabase) data streams.
  */
 class DatabaseEngine {
-  private db: IDBDatabase | null = null;
+  private localDb: IDBDatabase | null = null;
 
-  async connect(): Promise<IDBDatabase> {
-    if (this.db) return this.db;
-
+  async connectLocal(): Promise<IDBDatabase> {
+    if (this.localDb) return this.localDb;
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, DB_VERSION);
-
-      request.onerror = () => reject('Database failed to open');
-      
+      request.onerror = () => reject('Local database failed to open');
       request.onsuccess = (event) => {
-        this.db = (event.target as IDBOpenDBRequest).result;
-        resolve(this.db);
+        this.localDb = (event.target as IDBOpenDBRequest).result;
+        resolve(this.localDb);
       };
-
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
         Object.values(STORES).forEach(storeName => {
           if (!db.objectStoreNames.contains(storeName)) {
-            // Create object stores with 'id' as the primary key
             db.createObjectStore(storeName, { keyPath: 'id' });
           }
         });
@@ -46,52 +52,99 @@ class DatabaseEngine {
     });
   }
 
-  async getStore(storeName: string, mode: IDBTransactionMode = 'readonly'): Promise<IDBObjectStore> {
-    const db = await this.connect();
+  async getLocalStore(storeName: string, mode: IDBTransactionMode = 'readonly'): Promise<IDBObjectStore> {
+    const db = await this.connectLocal();
     const transaction = db.transaction(storeName, mode);
     return transaction.objectStore(storeName);
   }
 
+  // Generic Cloud Fetcher
+  async cloudAll<T>(table: string): Promise<T[] | null> {
+    if (!supabase) return null;
+    const { data, error } = await supabase.from(table).select('*');
+    if (error) {
+      console.warn(`Cloud fetch error for ${table}:`, error.message);
+      return null;
+    }
+    return data as T[];
+  }
+
+  // Generic Cloud Saver
+  async cloudSave<T extends { id: string }>(table: string, item: T): Promise<boolean> {
+    if (!supabase) return false;
+    const { error } = await supabase.from(table).upsert(item);
+    if (error) {
+      console.error(`Cloud save error for ${table}:`, error.message);
+      return false;
+    }
+    return true;
+  }
+
+  // --- Public API ---
+
   async all<T>(storeName: string): Promise<T[]> {
-    const store = await this.getStore(storeName);
+    // Try cloud first
+    const cloudData = await this.cloudAll<T>(storeName);
+    if (cloudData) {
+      // Sync to local for offline use
+      for (const item of cloudData) await this.saveLocal(storeName, item as any);
+      return cloudData;
+    }
+
+    // Fallback to local
+    const store = await this.getLocalStore(storeName);
     return new Promise((resolve, reject) => {
       const request = store.getAll();
       request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(`Error fetching from ${storeName}`);
+      request.onerror = () => reject(`Error fetching from local ${storeName}`);
     });
   }
 
   async save<T extends { id: string }>(storeName: string, item: T): Promise<T> {
-    const store = await this.getStore(storeName, 'readwrite');
+    // Save to cloud if available
+    await this.cloudSave(storeName, item);
+    // Always save to local
+    return this.saveLocal(storeName, item);
+  }
+
+  private async saveLocal<T extends { id: string }>(storeName: string, item: T): Promise<T> {
+    const store = await this.getLocalStore(storeName, 'readwrite');
     return new Promise((resolve, reject) => {
       const request = store.put(item);
       request.onsuccess = () => resolve(item);
-      request.onerror = () => reject(`Error saving to ${storeName}`);
+      request.onerror = () => reject(`Error saving to local ${storeName}`);
     });
   }
 
   async delete(storeName: string, id: string): Promise<void> {
-    const store = await this.getStore(storeName, 'readwrite');
+    if (supabase) {
+      await supabase.from(storeName).delete().eq('id', id);
+    }
+    const store = await this.getLocalStore(storeName, 'readwrite');
     return new Promise((resolve, reject) => {
       const request = store.delete(id);
       request.onsuccess = () => resolve();
-      request.onerror = () => reject(`Error deleting from ${storeName}`);
+      request.onerror = () => reject(`Error deleting from local ${storeName}`);
     });
   }
 
   async getById<T>(storeName: string, id: string): Promise<T | null> {
-    const store = await this.getStore(storeName);
+    if (supabase) {
+      const { data } = await supabase.from(storeName).select('*').eq('id', id).single();
+      if (data) return data as T;
+    }
+    const store = await this.getLocalStore(storeName);
     return new Promise((resolve, reject) => {
       const request = store.get(id);
       request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => reject(`Error getting ID from ${storeName}`);
+      request.onerror = () => reject(`Error getting local ID from ${storeName}`);
     });
   }
 }
 
 const engine = new DatabaseEngine();
 
-// --- Seed Data ---
+// --- Default Data for Initialization ---
 const DEFAULT_USERS: User[] = [
   {
     id: 'u1',
@@ -101,11 +154,6 @@ const DEFAULT_USERS: User[] = [
     role: 'ADMIN',
     privileges: ['MANAGE_USERS', 'VIEW_REPORTS', 'MANAGE_CUSTOMERS', 'MANAGE_SERVICES', 'MANAGE_JOBS', 'MANAGE_INVENTORY']
   }
-];
-
-const DEFAULT_SERVICES: Service[] = [
-  { id: 's1', name: 'Aadhaar Update', description: 'Biometric and demographic updates', basePrice: 50, category: 'UIDAI' },
-  { id: 's2', name: 'PAN Card New', description: 'Application for fresh PAN card', basePrice: 150, category: 'UTI/IT' }
 ];
 
 const DEFAULT_SETTINGS: CompanySettings = {
@@ -123,42 +171,35 @@ export const db = {
     save: (user: User) => engine.save(STORES.USERS, user),
     delete: (id: string) => engine.delete(STORES.USERS, id)
   },
-
   customers: {
     all: () => engine.all<Customer>(STORES.CUSTOMERS),
     save: (customer: Customer) => engine.save(STORES.CUSTOMERS, customer),
     delete: (id: string) => engine.delete(STORES.CUSTOMERS, id)
   },
-
   services: {
     all: () => engine.all<Service>(STORES.SERVICES),
     save: (service: Service) => engine.save(STORES.SERVICES, service),
     delete: (id: string) => engine.delete(STORES.SERVICES, id)
   },
-
   jobs: {
     all: () => engine.all<Job>(STORES.JOBS),
     save: (job: Job) => engine.save(STORES.JOBS, job),
     delete: (id: string) => engine.delete(STORES.JOBS, id)
   },
-
   inventory: {
     all: () => engine.all<InventoryItem>(STORES.INVENTORY),
     save: (item: InventoryItem) => engine.save(STORES.INVENTORY, item),
     delete: (id: string) => engine.delete(STORES.INVENTORY, id)
   },
-
   settings: {
     get: async (): Promise<CompanySettings> => {
       const settings = await engine.getById<CompanySettings>(STORES.SETTINGS, 'current_config');
       return settings || DEFAULT_SETTINGS;
     },
     save: async (settings: CompanySettings) => {
-      // Use a fixed ID to persist singular settings object
       await engine.save(STORES.SETTINGS, { ...settings, id: 'current_config' });
     }
   },
-
   auth: {
     getSession: async (): Promise<User | null> => {
       const storedId = localStorage.getItem('regal_erp_session_id');
@@ -173,11 +214,10 @@ export const db = {
       }
     },
     login: async (username: string, password: string): Promise<User | null> => {
-      const users = await engine.all<User>(STORES.USERS);
+      const users = await db.users.all();
       return users.find(u => u.username === username && u.password === password) || null;
     }
   },
-
   system: {
     backup: async () => {
       const workbook = XLSX.utils.book_new();
@@ -191,7 +231,7 @@ export const db = {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `regal_erp_backup_${new Date().toISOString().split('T')[0]}.xlsx`;
+      link.download = `regal_erp_cloud_backup_${new Date().toISOString().split('T')[0]}.xlsx`;
       link.click();
       URL.revokeObjectURL(url);
     },
@@ -202,19 +242,15 @@ export const db = {
           try {
             const data = new Uint8Array(e.target?.result as ArrayBuffer);
             const workbook = XLSX.read(data, { type: 'array' });
-            
             for (const storeName of Object.values(STORES)) {
               const sheet = workbook.Sheets[storeName];
               if (sheet) {
                 const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: null });
-                for (const item of jsonData) {
-                  await engine.save(storeName, item as any);
-                }
+                for (const item of jsonData) await engine.save(storeName, item as any);
               }
             }
             resolve(true);
           } catch (err) {
-            console.error("Database restore failed", err);
             reject(err);
           }
         };
@@ -222,25 +258,21 @@ export const db = {
       });
     }
   },
-
   init: async () => {
-    // Connect to IndexedDB engine
-    await engine.connect();
+    // Establish connections
+    await engine.connectLocal();
     
-    // Seed initial data if database is empty
+    // Seed initial admin if none exists in cloud/local
     const users = await db.users.all();
     if (users.length === 0) {
       for (const u of DEFAULT_USERS) await db.users.save(u);
     }
-    const services = await db.services.all();
-    if (services.length === 0) {
-      for (const s of DEFAULT_SERVICES) await db.services.save(s);
-    }
-    const settings = await engine.getById(STORES.SETTINGS, 'current_config');
-    if (!settings) {
+    
+    // Check settings
+    const currentSettings = await engine.getById(STORES.SETTINGS, 'current_config');
+    if (!currentSettings) {
       await db.settings.save(DEFAULT_SETTINGS);
     }
   },
-
-  isCloudActive: () => false
+  isCloudActive: () => !!supabase
 };
