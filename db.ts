@@ -16,7 +16,7 @@ const STORES = {
 };
 
 // --- Cloud Connectivity (Supabase) ---
-// Note: These will be provided by Vercel environment variables.
+// Note: These will be provided by environment variables in the execution context.
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
 
@@ -26,8 +26,8 @@ if (SUPABASE_URL && SUPABASE_ANON_KEY) {
 }
 
 /**
- * Enhanced Database Engine that handles both Local (IndexedDB) 
- * and Server (Supabase) data streams.
+ * Enhanced Database Engine that synchronizes Local (IndexedDB) 
+ * and Server (Supabase PostgreSQL) data streams.
  */
 class DatabaseEngine {
   private localDb: IDBDatabase | null = null;
@@ -58,93 +58,114 @@ class DatabaseEngine {
     return transaction.objectStore(storeName);
   }
 
-  // Generic Cloud Fetcher
+  // --- Generic Cloud Fetcher ---
   async cloudAll<T>(table: string): Promise<T[] | null> {
     if (!supabase) return null;
-    const { data, error } = await supabase.from(table).select('*');
-    if (error) {
-      console.warn(`Cloud fetch error for ${table}:`, error.message);
+    try {
+      const { data, error } = await supabase.from(table).select('*');
+      if (error) throw error;
+      return data as T[];
+    } catch (err) {
+      console.warn(`Cloud fetch failed for table: ${table}. Falling back to local store.`);
       return null;
     }
-    return data as T[];
   }
 
-  // Generic Cloud Saver
+  // --- Generic Cloud Saver ---
   async cloudSave<T extends { id: string }>(table: string, item: T): Promise<boolean> {
     if (!supabase) return false;
-    const { error } = await supabase.from(table).upsert(item);
-    if (error) {
-      console.error(`Cloud save error for ${table}:`, error.message);
+    try {
+      const { error } = await supabase.from(table).upsert(item);
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.error(`Cloud save failed for table: ${table}. Data stored locally.`);
       return false;
     }
-    return true;
   }
 
-  // --- Public API ---
+  // --- Generic Cloud Deleter ---
+  async cloudDelete(table: string, id: string): Promise<boolean> {
+    if (!supabase) return false;
+    try {
+      const { error } = await supabase.from(table).delete().eq('id', id);
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.error(`Cloud delete failed for table: ${table}.`);
+      return false;
+    }
+  }
+
+  // --- Public Universal API ---
 
   async all<T>(storeName: string): Promise<T[]> {
-    // Try cloud first
+    // 1. Attempt Server Retrieval
     const cloudData = await this.cloudAll<T>(storeName);
     if (cloudData) {
-      // Sync to local for offline use
-      for (const item of cloudData) await this.saveLocal(storeName, item as any);
+      // Background Sync: Refresh Local Cache
+      const db = await this.connectLocal();
+      const transaction = db.transaction(storeName, 'readwrite');
+      const store = transaction.objectStore(storeName);
+      cloudData.forEach(item => store.put(item));
       return cloudData;
     }
 
-    // Fallback to local
+    // 2. Local Fallback (for offline or misconfigured cloud)
     const store = await this.getLocalStore(storeName);
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const request = store.getAll();
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(`Error fetching from local ${storeName}`);
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => resolve([]);
     });
   }
 
   async save<T extends { id: string }>(storeName: string, item: T): Promise<T> {
-    // Save to cloud if available
+    // 1. Store on Server
     await this.cloudSave(storeName, item);
-    // Always save to local
-    return this.saveLocal(storeName, item);
-  }
-
-  private async saveLocal<T extends { id: string }>(storeName: string, item: T): Promise<T> {
+    
+    // 2. Store Locally
     const store = await this.getLocalStore(storeName, 'readwrite');
     return new Promise((resolve, reject) => {
       const request = store.put(item);
       request.onsuccess = () => resolve(item);
-      request.onerror = () => reject(`Error saving to local ${storeName}`);
+      request.onerror = () => reject(`Error saving ${storeName} locally`);
     });
   }
 
   async delete(storeName: string, id: string): Promise<void> {
-    if (supabase) {
-      await supabase.from(storeName).delete().eq('id', id);
-    }
+    // 1. Remove from Server
+    await this.cloudDelete(storeName, id);
+    
+    // 2. Remove Locally
     const store = await this.getLocalStore(storeName, 'readwrite');
     return new Promise((resolve, reject) => {
       const request = store.delete(id);
       request.onsuccess = () => resolve();
-      request.onerror = () => reject(`Error deleting from local ${storeName}`);
+      request.onerror = () => reject(`Error deleting ${id} from local ${storeName}`);
     });
   }
 
   async getById<T>(storeName: string, id: string): Promise<T | null> {
+    // 1. Try Server First
     if (supabase) {
       const { data } = await supabase.from(storeName).select('*').eq('id', id).single();
       if (data) return data as T;
     }
+    
+    // 2. Local Fallback
     const store = await this.getLocalStore(storeName);
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       const request = store.get(id);
       request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => reject(`Error getting local ID from ${storeName}`);
+      request.onerror = () => resolve(null);
     });
   }
 }
 
 const engine = new DatabaseEngine();
 
-// --- Default Data for Initialization ---
+// --- Default Data for Bootstrapping ---
 const DEFAULT_USERS: User[] = [
   {
     id: 'u1',
@@ -165,6 +186,7 @@ const DEFAULT_SETTINGS: CompanySettings = {
   website: 'www.regaljsk.com'
 };
 
+// --- Exported Database API ---
 export const db = {
   users: {
     all: () => engine.all<User>(STORES.USERS),
@@ -231,7 +253,7 @@ export const db = {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `regal_erp_cloud_backup_${new Date().toISOString().split('T')[0]}.xlsx`;
+      link.download = `regal_erp_backup_${new Date().toISOString().split('T')[0]}.xlsx`;
       link.click();
       URL.revokeObjectURL(url);
     },
@@ -259,16 +281,17 @@ export const db = {
     }
   },
   init: async () => {
-    // Establish connections
+    // 1. Establish Local Connection
     await engine.connectLocal();
     
-    // Seed initial admin if none exists in cloud/local
+    // 2. Bootstrap Cloud/Local with initial Admin if empty
     const users = await db.users.all();
     if (users.length === 0) {
+      console.log('Provisioning default administrative credentials...');
       for (const u of DEFAULT_USERS) await db.users.save(u);
     }
     
-    // Check settings
+    // 3. Ensure base configuration exists
     const currentSettings = await engine.getById(STORES.SETTINGS, 'current_config');
     if (!currentSettings) {
       await db.settings.save(DEFAULT_SETTINGS);
