@@ -17,7 +17,10 @@
     "recharts": "^2.15.0",
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.5",
-    "@google/genai": "^0.2.1"
+    "@google/genai": "^1.40.0",
+    "jspdf": "^2.5.1",
+    "html2canvas": "^1.4.1",
+    "xlsx": "0.18.5"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
