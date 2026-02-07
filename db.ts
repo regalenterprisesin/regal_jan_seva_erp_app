@@ -2,7 +2,9 @@
 import { User, Customer, Service, Job, InventoryItem, CompanySettings } from './types';
 import * as XLSX from 'xlsx';
 
-const COLLECTIONS = {
+const DB_NAME = 'RegalJSK_ERP_DB';
+const DB_VERSION = 1;
+const STORES = {
   USERS: 'users',
   CUSTOMERS: 'customers',
   SERVICES: 'services',
@@ -11,30 +13,83 @@ const COLLECTIONS = {
   SETTINGS: 'settings'
 };
 
-// --- Storage Helpers ---
-const storage = {
-  get: <T>(key: string): T[] => {
-    const data = localStorage.getItem(`regal_erp_${key}`);
-    return data ? JSON.parse(data) : [];
-  },
-  set: <T>(key: string, data: T[]) => {
-    localStorage.setItem(`regal_erp_${key}`, JSON.stringify(data));
-  },
-  save: <T extends { id: string }>(key: string, item: T) => {
-    const items = storage.get<T>(key);
-    const index = items.findIndex(i => i.id === item.id);
-    if (index > -1) {
-      items[index] = item;
-    } else {
-      items.push(item);
-    }
-    storage.set(key, items);
-  },
-  remove: (key: string, id: string) => {
-    const items = storage.get<any>(key);
-    storage.set(key, items.filter((i: any) => i.id !== id));
+/**
+ * Database Engine using IndexedDB for professional-grade browser storage.
+ * This replaces the previous localStorage implementation with a proper
+ * transactional database system.
+ */
+class DatabaseEngine {
+  private db: IDBDatabase | null = null;
+
+  async connect(): Promise<IDBDatabase> {
+    if (this.db) return this.db;
+
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+      request.onerror = () => reject('Database failed to open');
+      
+      request.onsuccess = (event) => {
+        this.db = (event.target as IDBOpenDBRequest).result;
+        resolve(this.db);
+      };
+
+      request.onupgradeneeded = (event) => {
+        const db = (event.target as IDBOpenDBRequest).result;
+        Object.values(STORES).forEach(storeName => {
+          if (!db.objectStoreNames.contains(storeName)) {
+            // Create object stores with 'id' as the primary key
+            db.createObjectStore(storeName, { keyPath: 'id' });
+          }
+        });
+      };
+    });
   }
-};
+
+  async getStore(storeName: string, mode: IDBTransactionMode = 'readonly'): Promise<IDBObjectStore> {
+    const db = await this.connect();
+    const transaction = db.transaction(storeName, mode);
+    return transaction.objectStore(storeName);
+  }
+
+  async all<T>(storeName: string): Promise<T[]> {
+    const store = await this.getStore(storeName);
+    return new Promise((resolve, reject) => {
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(`Error fetching from ${storeName}`);
+    });
+  }
+
+  async save<T extends { id: string }>(storeName: string, item: T): Promise<T> {
+    const store = await this.getStore(storeName, 'readwrite');
+    return new Promise((resolve, reject) => {
+      const request = store.put(item);
+      request.onsuccess = () => resolve(item);
+      request.onerror = () => reject(`Error saving to ${storeName}`);
+    });
+  }
+
+  async delete(storeName: string, id: string): Promise<void> {
+    const store = await this.getStore(storeName, 'readwrite');
+    return new Promise((resolve, reject) => {
+      const request = store.delete(id);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(`Error deleting from ${storeName}`);
+    });
+  }
+
+  async getById<T>(storeName: string, id: string): Promise<T | null> {
+    const store = await this.getStore(storeName);
+    return new Promise((resolve, reject) => {
+      const request = store.get(id);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(`Error getting ID from ${storeName}`);
+    });
+  }
+}
+
+const engine = new DatabaseEngine();
 
 // --- Seed Data ---
 const DEFAULT_USERS: User[] = [
@@ -64,42 +119,43 @@ const DEFAULT_SETTINGS: CompanySettings = {
 
 export const db = {
   users: {
-    all: async () => storage.get<User>(COLLECTIONS.USERS),
-    save: async (user: User) => storage.save(COLLECTIONS.USERS, user),
-    delete: async (id: string) => storage.remove(COLLECTIONS.USERS, id)
+    all: () => engine.all<User>(STORES.USERS),
+    save: (user: User) => engine.save(STORES.USERS, user),
+    delete: (id: string) => engine.delete(STORES.USERS, id)
   },
 
   customers: {
-    all: async () => storage.get<Customer>(COLLECTIONS.CUSTOMERS),
-    save: async (customer: Customer) => storage.save(COLLECTIONS.CUSTOMERS, customer),
-    delete: async (id: string) => storage.remove(COLLECTIONS.CUSTOMERS, id)
+    all: () => engine.all<Customer>(STORES.CUSTOMERS),
+    save: (customer: Customer) => engine.save(STORES.CUSTOMERS, customer),
+    delete: (id: string) => engine.delete(STORES.CUSTOMERS, id)
   },
 
   services: {
-    all: async () => storage.get<Service>(COLLECTIONS.SERVICES),
-    save: async (service: Service) => storage.save(COLLECTIONS.SERVICES, service),
-    delete: async (id: string) => storage.remove(COLLECTIONS.SERVICES, id)
+    all: () => engine.all<Service>(STORES.SERVICES),
+    save: (service: Service) => engine.save(STORES.SERVICES, service),
+    delete: (id: string) => engine.delete(STORES.SERVICES, id)
   },
 
   jobs: {
-    all: async () => storage.get<Job>(COLLECTIONS.JOBS),
-    save: async (job: Job) => storage.save(COLLECTIONS.JOBS, job),
-    delete: async (id: string) => storage.remove(COLLECTIONS.JOBS, id)
+    all: () => engine.all<Job>(STORES.JOBS),
+    save: (job: Job) => engine.save(STORES.JOBS, job),
+    delete: (id: string) => engine.delete(STORES.JOBS, id)
   },
 
   inventory: {
-    all: async () => storage.get<InventoryItem>(COLLECTIONS.INVENTORY),
-    save: async (item: InventoryItem) => storage.save(COLLECTIONS.INVENTORY, item),
-    delete: async (id: string) => storage.remove(COLLECTIONS.INVENTORY, id)
+    all: () => engine.all<InventoryItem>(STORES.INVENTORY),
+    save: (item: InventoryItem) => engine.save(STORES.INVENTORY, item),
+    delete: (id: string) => engine.delete(STORES.INVENTORY, id)
   },
 
   settings: {
     get: async (): Promise<CompanySettings> => {
-      const data = localStorage.getItem(`regal_erp_${COLLECTIONS.SETTINGS}`);
-      return data ? JSON.parse(data) : DEFAULT_SETTINGS;
+      const settings = await engine.getById<CompanySettings>(STORES.SETTINGS, 'current_config');
+      return settings || DEFAULT_SETTINGS;
     },
     save: async (settings: CompanySettings) => {
-      localStorage.setItem(`regal_erp_${COLLECTIONS.SETTINGS}`, JSON.stringify(settings));
+      // Use a fixed ID to persist singular settings object
+      await engine.save(STORES.SETTINGS, { ...settings, id: 'current_config' });
     }
   },
 
@@ -107,8 +163,7 @@ export const db = {
     getSession: async (): Promise<User | null> => {
       const storedId = localStorage.getItem('regal_erp_session_id');
       if (!storedId) return null;
-      const users = await db.users.all();
-      return users.find(u => u.id === storedId) || null;
+      return engine.getById<User>(STORES.USERS, storedId);
     },
     setSession: (user: User | null) => {
       if (user) {
@@ -118,7 +173,7 @@ export const db = {
       }
     },
     login: async (username: string, password: string): Promise<User | null> => {
-      const users = await db.users.all();
+      const users = await engine.all<User>(STORES.USERS);
       return users.find(u => u.username === username && u.password === password) || null;
     }
   },
@@ -126,16 +181,10 @@ export const db = {
   system: {
     backup: async () => {
       const workbook = XLSX.utils.book_new();
-      for (const [key, value] of Object.entries(COLLECTIONS)) {
-        if (key === 'SETTINGS') {
-          const settings = await db.settings.get();
-          const worksheet = XLSX.utils.json_to_sheet([settings]);
-          XLSX.utils.book_append_sheet(workbook, worksheet, value);
-          continue;
-        }
-        const data = storage.get(value);
+      for (const storeName of Object.values(STORES)) {
+        const data = await engine.all(storeName);
         const worksheet = XLSX.utils.json_to_sheet(data);
-        XLSX.utils.book_append_sheet(workbook, worksheet, value);
+        XLSX.utils.book_append_sheet(workbook, worksheet, storeName);
       }
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
       const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -154,42 +203,31 @@ export const db = {
             const data = new Uint8Array(e.target?.result as ArrayBuffer);
             const workbook = XLSX.read(data, { type: 'array' });
             
-            // Check if the workbook contains at least some of our expected sheets
-            const sheetNames = workbook.SheetNames;
-            const validSheets = Object.values(COLLECTIONS).filter(name => sheetNames.includes(name));
-            
-            if (validSheets.length === 0) {
-              throw new Error("Invalid backup: No recognizable ERP data sheets found.");
-            }
-
-            // Iterate through our defined collections and restore if matching sheet exists
-            for (const collectionName of Object.values(COLLECTIONS)) {
-              const sheet = workbook.Sheets[collectionName];
+            for (const storeName of Object.values(STORES)) {
+              const sheet = workbook.Sheets[storeName];
               if (sheet) {
                 const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: null });
-                if (collectionName === COLLECTIONS.SETTINGS) {
-                  if (jsonData.length > 0) {
-                    localStorage.setItem(`regal_erp_${COLLECTIONS.SETTINGS}`, JSON.stringify(jsonData[0]));
-                  }
-                  continue;
+                for (const item of jsonData) {
+                  await engine.save(storeName, item as any);
                 }
-                const sanitizedData = jsonData.filter(item => item !== null && typeof item === 'object');
-                storage.set(collectionName, sanitizedData);
               }
             }
             resolve(true);
           } catch (err) {
-            console.error("Restore process failed:", err);
+            console.error("Database restore failed", err);
             reject(err);
           }
         };
-        reader.onerror = () => reject(new Error('File Reader: Encountered an error while reading the Excel file.'));
         reader.readAsArrayBuffer(file);
       });
     }
   },
 
   init: async () => {
+    // Connect to IndexedDB engine
+    await engine.connect();
+    
+    // Seed initial data if database is empty
     const users = await db.users.all();
     if (users.length === 0) {
       for (const u of DEFAULT_USERS) await db.users.save(u);
@@ -198,8 +236,8 @@ export const db = {
     if (services.length === 0) {
       for (const s of DEFAULT_SERVICES) await db.services.save(s);
     }
-    const currentSettings = localStorage.getItem(`regal_erp_${COLLECTIONS.SETTINGS}`);
-    if (!currentSettings) {
+    const settings = await engine.getById(STORES.SETTINGS, 'current_config');
+    if (!settings) {
       await db.settings.save(DEFAULT_SETTINGS);
     }
   },
