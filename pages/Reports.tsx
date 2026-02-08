@@ -173,7 +173,7 @@ const Reports: React.FC = () => {
                           <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Workflow: #{j.id.slice(-6).toUpperCase()}</div>
                         </td>
                         <td className="px-8 py-6">
-                          <div className="font-bold text-slate-600 dark:text-slate-400">{customers.find(c => c.id === j.customerId)?.name || 'Walk-in'}</div>
+                          <div className="font-bold text-sm text-slate-600 dark:text-slate-400">{customers.find(c => c.id === j.customerId)?.name || 'Walk-in'}</div>
                         </td>
                         <td className="px-8 py-6">
                           <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border ${
@@ -205,7 +205,7 @@ const Reports: React.FC = () => {
                     {(data as Job[]).map((j) => (
                       <tr key={j.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                         <td className="px-10 py-6">
-                          <div className="font-black text-slate-900 dark:text-slate-100">{customers.find(c => c.id === j.customerId)?.name || 'Unknown'}</div>
+                          <div className="font-black text-sm text-slate-900 dark:text-slate-100">{customers.find(c => c.id === j.customerId)?.name || 'Unknown'}</div>
                           <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Job ID: #{j.id.slice(-4)}</div>
                         </td>
                         <td className="px-8 py-6 font-black text-slate-600 dark:text-slate-400">₹{j.totalAmount.toLocaleString()}</td>

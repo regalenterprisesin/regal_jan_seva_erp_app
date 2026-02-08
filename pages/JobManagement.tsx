@@ -319,8 +319,8 @@ const JobManagement: React.FC = () => {
                       <div className="flex flex-col"><span className={`text-sm font-black ${task.isOverdue ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}>{task.customerName}</span></div>
                     </div>
                   </td>
-                  <td className="px-6 py-5 font-mono text-[11px] tracking-widest text-blue-600 dark:text-blue-400">{task.customerAadhaar ? task.customerAadhaar.replace(/(\d{4})/g, '$1 ').trim() : 'NOT SET'}</td>
-                  <td className="px-6 py-5 font-black text-slate-900 dark:text-white">{task.serviceName}</td>
+                  <td className="px-6 py-5 font-mono text-sm tracking-widest text-blue-600 dark:text-blue-400">{task.customerAadhaar ? task.customerAadhaar.replace(/(\d{4})/g, '$1 ').trim() : 'NOT SET'}</td>
+                  <td className="px-6 py-5 font-black text-slate-900 dark:text-white text-sm">{task.serviceName}</td>
                   <td className="px-6 py-5 text-sm font-bold text-slate-500">{new Date(task.date).toLocaleDateString('en-IN')}</td>
                   <td className="px-6 py-5">
                     <select 

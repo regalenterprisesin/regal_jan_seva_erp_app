@@ -240,7 +240,7 @@ const CustomerManagement: React.FC = () => {
               {filteredCustomers.map(customer => (
                 <tr key={customer.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                   <td className="px-8 py-5">
-                    <div className="font-black text-slate-900 dark:text-slate-100">{customer.name}</div>
+                    <div className="font-black text-sm text-slate-900 dark:text-slate-100">{customer.name}</div>
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate max-w-[200px]">{customer.address || 'No Address'}</div>
                   </td>
                   <td className="px-6 py-5 text-sm font-bold text-slate-600 dark:text-slate-400">{customer.phone}</td>
