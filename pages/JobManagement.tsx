@@ -318,7 +318,7 @@ const JobManagement: React.FC = () => {
                       <div className={`w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800 border ${task.isOverdue ? 'border-rose-200 dark:border-rose-900' : 'border-slate-100 dark:border-slate-800'} flex items-center justify-center text-[10px] font-black ${task.isOverdue ? 'text-rose-600' : 'text-blue-600 dark:text-blue-400'}`}>{task.customerName[0]}</div>
                       <div className="flex flex-col">
                         <span className={`text-sm font-black ${task.isOverdue ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}>{task.customerName}</span>
-                        <span className="text-[10px] font-bold text-slate-500">{task.customerPhone}</span>
+                        <span className="text-[12px] font-bold text-slate-500">{task.customerPhone}</span>
                       </div>
                     </div>
                   </td>
