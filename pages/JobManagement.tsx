@@ -23,12 +23,10 @@ const JobManagement: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   
   const [view, setView] = useState<'LIST' | 'BOARD' | 'OVERDUE'>('LIST');
   const [showModal, setShowModal] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
-  const [receiptJob, setReceiptJob] = useState<Job | null>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ field: 'date', direction: 'DESC' });
 
   // Staged Item Form State
@@ -58,7 +56,6 @@ const JobManagement: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-    // Real-time subscriptions
     const unsubJobs = db.jobs.subscribe(fetchData);
     const unsubCustomers = db.customers.subscribe(fetchData);
     const unsubServices = db.services.subscribe(fetchData);
@@ -66,12 +63,10 @@ const JobManagement: React.FC = () => {
     return () => {
       unsubJobs();
       unsubCustomers();
-      // // Fix: Removed call to undefined unsubInventory variable which caused compilation error
       unsubServices();
     };
   }, []);
 
-  // Helper to check if a task is overdue
   const isOverdue = (status: string, date: string) => {
     if (status === 'COMPLETED') return false;
     const threeDaysAgo = new Date();
@@ -157,10 +152,7 @@ const JobManagement: React.FC = () => {
   const getService = (id: string) => services.find(s => s.id === id);
 
   const handleAddStagedItem = () => {
-    if (!currentItem.serviceId) {
-      alert("Please select a service first.");
-      return;
-    }
+    if (!currentItem.serviceId) return;
     const newItems = [...(formData.items || []), { ...currentItem }];
     setFormData({ ...formData, items: newItems });
     setCurrentItem({ serviceId: '', quantity: 1, unitPrice: 0, discount: 0, subtotal: 0, status: 'PENDING' });
@@ -181,24 +173,27 @@ const JobManagement: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.customerId || !formData.items || formData.items.length === 0) {
-      alert("Please select a customer and add at least one service.");
-      return;
-    }
+    if (!formData.customerId || !formData.items || formData.items.length === 0) return;
 
     const balance = totals.pendingAmount;
     const paymentStatus = balance === 0 ? 'PAID' : (formData.paidAmount || 0) > 0 ? 'PARTIAL' : 'UNPAID';
 
+    // Calculate overall job status from items
+    let overallStatus: JobStatus = 'PENDING';
+    if (formData.items.every(i => i.status === 'COMPLETED')) overallStatus = 'COMPLETED';
+    else if (formData.items.some(i => i.status === 'IN_PROGRESS' || i.status === 'COMPLETED')) overallStatus = 'IN_PROGRESS';
+    else if (formData.items.every(i => i.status === 'CANCELLED')) overallStatus = 'CANCELLED';
+
     const jobData = {
       ...formData,
+      status: overallStatus,
       paymentStatus,
       balance,
       updatedAt: new Date().toISOString()
     } as Job;
 
     if (editingJob) {
-      const updatedJob = { ...editingJob, ...jobData };
-      await db.jobs.save(updatedJob);
+      await db.jobs.save({ ...editingJob, ...jobData });
     } else {
       const newJob: Job = { ...jobData, id: 'job' + Date.now(), createdAt: new Date().toISOString() };
       await db.jobs.save(newJob);
@@ -209,15 +204,20 @@ const JobManagement: React.FC = () => {
   const handleItemStatusUpdate = async (job: Job, itemIndex: number, newStatus: JobStatus) => {
     const newItems = [...job.items];
     newItems[itemIndex] = { ...newItems[itemIndex], status: newStatus };
-    const updatedJob = { ...job, items: newItems, updatedAt: new Date().toISOString() };
-    await db.jobs.save(updatedJob);
-  };
+    
+    // Sync overall status
+    let overallStatus: JobStatus = 'PENDING';
+    if (newItems.every(i => i.status === 'COMPLETED')) overallStatus = 'COMPLETED';
+    else if (newItems.some(i => i.status === 'IN_PROGRESS' || i.status === 'COMPLETED')) overallStatus = 'IN_PROGRESS';
+    else if (newItems.every(i => i.status === 'CANCELLED')) overallStatus = 'CANCELLED';
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('Permanently delete this record?')) {
-      await db.jobs.delete(id);
-      if (editingJob?.id === id) closeModal();
-    }
+    const updatedJob = { 
+      ...job, 
+      items: newItems, 
+      status: overallStatus, 
+      updatedAt: new Date().toISOString() 
+    };
+    await db.jobs.save(updatedJob);
   };
 
   const openModal = (job?: Job) => {
@@ -255,37 +255,6 @@ const JobManagement: React.FC = () => {
       }
       return { field, direction: 'ASC' };
     });
-  };
-
-  const handlePrint = (job: Job) => {
-    setReceiptJob(job);
-    setIsGeneratingPDF(false);
-    setTimeout(() => {
-      window.print();
-      setReceiptJob(null);
-    }, 150);
-  };
-
-  const handleDownloadPDF = async (job: Job) => {
-    setIsGeneratingPDF(true);
-    setReceiptJob(job);
-    setTimeout(async () => {
-      const element = document.getElementById('receipt-container');
-      if (element) {
-        try {
-          const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-          const imgData = canvas.toDataURL('image/png');
-          const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, 200] });
-          const pdfWidth = pdf.internal.pageSize.getWidth();
-          const imgProps = pdf.getImageProperties(imgData);
-          const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-          pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-          pdf.save(`Regal-Receipt-${job.id.slice(-6)}.pdf`);
-        } catch (error) { console.error("PDF generation failed", error); }
-      }
-      setReceiptJob(null);
-      setIsGeneratingPDF(false);
-    }, 500);
   };
 
   const SortIcon = ({ field }: { field: SortField }) => {
@@ -326,96 +295,42 @@ const JobManagement: React.FC = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-950/50 border-b border-slate-100 dark:border-slate-800">
-                <th 
-                  className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  onClick={() => toggleSort('customerName')}
-                >
-                  <div className="flex items-center">Customer <SortIcon field="customerName" /></div>
-                </th>
-                <th 
-                  className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  onClick={() => toggleSort('customerAadhaar')}
-                >
-                  <div className="flex items-center">Aadhaar Number <SortIcon field="customerAadhaar" /></div>
-                </th>
-                <th 
-                  className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  onClick={() => toggleSort('serviceName')}
-                >
-                  <div className="flex items-center">Service <SortIcon field="serviceName" /></div>
-                </th>
-                <th 
-                  className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  onClick={() => toggleSort('date')}
-                >
-                  <div className="flex items-center">Date Generated <SortIcon field="date" /></div>
-                </th>
-                <th 
-                  className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  onClick={() => toggleSort('status')}
-                >
-                  <div className="flex items-center">Status <SortIcon field="status" /></div>
-                </th>
+                <th className="px-8 py-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] cursor-pointer" onClick={() => toggleSort('customerName')}><div className="flex items-center">Customer <SortIcon field="customerName" /></div></th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] cursor-pointer" onClick={() => toggleSort('customerAadhaar')}><div className="flex items-center">Aadhaar <SortIcon field="customerAadhaar" /></div></th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] cursor-pointer" onClick={() => toggleSort('serviceName')}><div className="flex items-center">Service <SortIcon field="serviceName" /></div></th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] cursor-pointer" onClick={() => toggleSort('date')}><div className="flex items-center">Date <SortIcon field="date" /></div></th>
+                <th className="px-6 py-5 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] cursor-pointer" onClick={() => toggleSort('status')}><div className="flex items-center">Status <SortIcon field="status" /></div></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-              {sortedTasks.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center text-sm font-bold text-slate-300 uppercase tracking-widest italic">
-                    {view === 'OVERDUE' ? "No overdue jobs found." : "No records found in workflow."}
+              {sortedTasks.map(task => (
+                <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+                  <td className="px-8 py-5">
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800 border ${task.isOverdue ? 'border-rose-200 dark:border-rose-900' : 'border-slate-100 dark:border-slate-800'} flex items-center justify-center text-[10px] font-black ${task.isOverdue ? 'text-rose-600' : 'text-blue-600 dark:text-blue-400'}`}>{task.customerName[0]}</div>
+                      <div className="flex flex-col"><span className={`text-sm font-black ${task.isOverdue ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}>{task.customerName}</span></div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-5 font-mono text-[11px] tracking-widest text-blue-600 dark:text-blue-400">{task.customerAadhaar ? task.customerAadhaar.replace(/(\d{4})/g, '$1 ').trim() : 'NOT SET'}</td>
+                  <td className="px-6 py-5 font-black text-slate-900 dark:text-white">{task.serviceName}</td>
+                  <td className="px-6 py-5 text-sm font-bold text-slate-500">{new Date(task.date).toLocaleDateString('en-IN')}</td>
+                  <td className="px-6 py-5">
+                    <select 
+                      value={task.status}
+                      onChange={(e) => handleItemStatusUpdate(task.originalJob, task.itemIndex, e.target.value as JobStatus)}
+                      className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-[15px] border outline-none bg-transparent cursor-pointer ${
+                        task.status === 'COMPLETED' ? 'text-emerald-600 border-emerald-500/20 bg-emerald-500/5' :
+                        task.status === 'IN_PROGRESS' ? 'text-blue-600 border-blue-500/20 bg-blue-500/5' : 'text-amber-600 border-amber-500/20 bg-amber-500/5'
+                      }`}
+                    >
+                      <option value="PENDING">Pending</option>
+                      <option value="IN_PROGRESS">In Progress</option>
+                      <option value="COMPLETED">Completed</option>
+                      <option value="CANCELLED">Cancelled</option>
+                    </select>
                   </td>
                 </tr>
-              ) : (
-                sortedTasks.map(task => (
-                  <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-                    <td className="px-8 py-5">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800 border ${task.isOverdue ? 'border-rose-200 dark:border-rose-900' : 'border-slate-100 dark:border-slate-800'} flex items-center justify-center text-[10px] font-black ${task.isOverdue ? 'text-rose-600' : 'text-blue-600 dark:text-blue-400'} shrink-0`}>
-                          {task.customerName[0]}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className={`text-sm font-black ${task.isOverdue ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}>{task.customerName}</span>
-                          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-500">{task.customerPhone}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className="text-[11px] font-mono text-blue-600 dark:text-blue-400 font-black tracking-widest uppercase">
-                        {task.customerAadhaar ? task.customerAadhaar.replace(/(\d{4})/g, '$1 ').trim() : 'NO AADHAAR'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-5">
-                      <div className="font-black text-slate-900 dark:text-white truncate max-w-xs">{task.serviceName}</div>
-                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: #{task.jobId.slice(-6).toUpperCase()}</div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <div className={`text-sm font-bold flex items-center ${task.isOverdue ? 'text-rose-600' : 'text-slate-500 dark:text-slate-500'}`}>
-                        {new Date(task.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        {task.isOverdue && <AlertCircle size={14} className="ml-2" />}
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <div className="flex items-center space-x-2">
-                        <select 
-                          value={task.status}
-                          onChange={(e) => handleItemStatusUpdate(task.originalJob, task.itemIndex, e.target.value as JobStatus)}
-                          className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-[15px] border outline-none bg-transparent cursor-pointer transition-all ${
-                            task.status === 'COMPLETED' ? 'text-emerald-600 border-emerald-500/20 bg-emerald-500/5' :
-                            task.status === 'PENDING' ? 'text-amber-600 border-amber-500/20 bg-amber-500/5' :
-                            task.status === 'CANCELLED' ? 'text-rose-600 border-rose-500/20 bg-rose-500/5' :
-                            'text-blue-600 border-blue-500/20 bg-blue-500/5'
-                          }`}
-                        >
-                          <option value="PENDING">Pending</option>
-                          <option value="IN_PROGRESS">In Progress</option>
-                          <option value="COMPLETED">Completed</option>
-                          <option value="CANCELLED">Cancelled</option>
-                        </select>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>
@@ -429,11 +344,21 @@ const JobManagement: React.FC = () => {
               </h4>
               <div className="space-y-4">
                 {flattenedTasks.filter(t => t.status === status).map(task => (
-                  <div key={task.id} onClick={() => openModal(task.originalJob)} className={`bg-slate-50 dark:bg-slate-950 p-5 rounded-[15px] border ${task.isOverdue ? 'border-rose-500/30' : 'border-transparent'} cursor-pointer hover:border-blue-500/50 hover:bg-white dark:hover:bg-slate-800 transition-all group relative shadow-sm`}>
-                    <p className="text-xs font-black text-slate-900 dark:text-white mb-1">{task.serviceName}</p>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{task.customerName}</p>
+                  <div key={task.id} className={`bg-slate-50 dark:bg-slate-950 p-5 rounded-[15px] border ${task.isOverdue ? 'border-rose-500/30' : 'border-transparent'} hover:border-blue-500/50 hover:bg-white dark:hover:bg-slate-800 transition-all group relative shadow-sm`}>
+                    <div onClick={() => openModal(task.originalJob)} className="cursor-pointer mb-4">
+                      <p className="text-xs font-black text-slate-900 dark:text-white mb-1">{task.serviceName}</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{task.customerName}</p>
+                    </div>
                     <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800">
-                       <span className="text-[10px] font-black text-slate-400">ID: #{task.jobId.slice(-4)}</span>
+                       <select 
+                         value={task.status}
+                         onChange={(e) => handleItemStatusUpdate(task.originalJob, task.itemIndex, e.target.value as JobStatus)}
+                         className="text-[8px] font-black uppercase bg-transparent outline-none text-slate-400 hover:text-blue-500 transition-colors cursor-pointer"
+                       >
+                         <option value="PENDING">Pending</option>
+                         <option value="IN_PROGRESS">Process</option>
+                         <option value="COMPLETED">Done</option>
+                       </select>
                        {task.isOverdue && <span className="text-[8px] font-black uppercase text-rose-500 flex items-center"><AlertCircle size={10} className="mr-1" /> Overdue</span>}
                     </div>
                   </div>
