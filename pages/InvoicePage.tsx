@@ -241,6 +241,16 @@ const InvoicePage: React.FC = () => {
     }, 500);
   };
 
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("Permanently delete this invoice record?")) return;
+    try {
+      await db.jobs.delete(id);
+      setJobs(jobs.filter(j => j.id !== id));
+    } catch (err) {
+      alert("Delete failed.");
+    }
+  };
+
   const styles = `
     .no-spinner::-webkit-outer-spin-button,
     .no-spinner::-webkit-inner-spin-button {
@@ -386,6 +396,7 @@ const InvoicePage: React.FC = () => {
                          <button onClick={() => handleEdit(job)} className="p-2 text-slate-400 hover:text-amber-500 transition-colors" title="Edit"><Edit size={16}/></button>
                          <button onClick={() => handlePrint(job)} className="p-2 text-slate-400 hover:text-blue-500 transition-colors" title="Print"><Printer size={16}/></button>
                          <button onClick={() => handleDownloadPDF(job)} className="p-2 text-slate-400 hover:text-emerald-500 transition-colors" title="Download PDF"><Download size={16}/></button>
+                         <button onClick={() => handleDelete(job.id)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors" title="Delete"><Trash2 size={16}/></button>
                       </td>
                     </tr>
                   ))
