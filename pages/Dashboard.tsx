@@ -21,21 +21,35 @@ const Dashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
+  const fetchData = async () => {
+    const [jobsData, customersData, inventoryData, servicesData] = await Promise.all([
+      db.jobs.all(),
+      db.customers.all(),
+      db.inventory.all(),
+      db.services.all()
+    ]);
+    setJobs(jobsData);
+    setCustomers(customersData);
+    setInventory(inventoryData);
+    setServices(servicesData);
+    setIsLoading(false);
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      const [jobsData, customersData, inventoryData, servicesData] = await Promise.all([
-        db.jobs.all(),
-        db.customers.all(),
-        db.inventory.all(),
-        db.services.all()
-      ]);
-      setJobs(jobsData);
-      setCustomers(customersData);
-      setInventory(inventoryData);
-      setServices(servicesData);
-      setIsLoading(false);
-    };
     fetchData();
+
+    // Subscribe to all relevant tables for real-time dashboard updates
+    const unsubJobs = db.jobs.subscribe(fetchData);
+    const unsubCustomers = db.customers.subscribe(fetchData);
+    const unsubInventory = db.inventory.subscribe(fetchData);
+    const unsubServices = db.services.subscribe(fetchData);
+
+    return () => {
+      unsubJobs();
+      unsubCustomers();
+      unsubInventory();
+      unsubServices();
+    };
   }, []);
 
   const greeting = useMemo(() => {
@@ -99,7 +113,7 @@ const Dashboard: React.FC = () => {
             <span className="text-xs font-black text-slate-500 dark:text-slate-300 uppercase tracking-widest">System Online</span>
           </div>
           <button 
-            onClick={() => navigate('/jobs')}
+            onClick={() => navigate('/invoices')}
             className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-3 rounded-[15px] font-bold transition-all shadow-xl shadow-slate-200 dark:shadow-none hover:scale-105 active:scale-95 flex items-center gap-2"
           >
             <Zap size={18} /> New Billing
@@ -154,7 +168,7 @@ const Dashboard: React.FC = () => {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <ShortcutButton onClick={() => navigate('/customers')} icon={<UserPlus size={20} />} label="New Customer" color="bg-blue-600" />
-        <ShortcutButton onClick={() => navigate('/jobs')} icon={<PlusCircle size={20} />} label="New Invoice" color="bg-indigo-600" />
+        <ShortcutButton onClick={() => navigate('/invoices')} icon={<PlusCircle size={20} />} label="New Invoice" color="bg-indigo-600" />
         <ShortcutButton onClick={() => navigate('/inventory')} icon={<Package size={20} />} label="Restock" color="bg-emerald-600" />
         <ShortcutButton onClick={() => navigate('/reports')} icon={<FileText size={20} />} label="Audit Log" color="bg-slate-700" />
       </div>

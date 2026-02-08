@@ -1,11 +1,9 @@
 
 import { User, Customer, Service, Job, InventoryItem, CompanySettings } from './types';
 import * as XLSX from 'xlsx';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 
 // --- Database Configuration ---
-const DB_NAME = 'RegalJSK_ERP_DB';
-const DB_VERSION = 1;
 const STORES = {
   USERS: 'users',
   CUSTOMERS: 'customers',
@@ -16,156 +14,87 @@ const STORES = {
 };
 
 // --- Cloud Connectivity (Supabase) ---
-// Safely access env vars to prevent "Cannot read properties of undefined (reading 'VITE_SUPABASE_URL')"
 const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || (process.env as any)?.VITE_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || (process.env as any)?.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || '';
+const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || (process.env as any)?.VITE_SUPABASE_ANON_KEY || '';
 
 let supabase: SupabaseClient | null = null;
 if (SUPABASE_URL && SUPABASE_ANON_KEY) {
   supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
-/**
- * Enhanced Database Engine that synchronizes Local (IndexedDB) 
- * and Server (Supabase PostgreSQL) data streams.
- */
 class DatabaseEngine {
-  private localDb: IDBDatabase | null = null;
-
-  async connectLocal(): Promise<IDBDatabase> {
-    if (this.localDb) return this.localDb;
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-      request.onerror = () => reject('Local database failed to open');
-      request.onsuccess = (event) => {
-        this.localDb = (event.target as IDBOpenDBRequest).result;
-        resolve(this.localDb);
-      };
-      request.onupgradeneeded = (event) => {
-        const dbInstance = (event.target as IDBOpenDBRequest).result;
-        Object.values(STORES).forEach(storeName => {
-          if (!dbInstance.objectStoreNames.contains(storeName)) {
-            dbInstance.createObjectStore(storeName, { keyPath: 'id' });
-          }
-        });
-      };
-    });
-  }
-
-  async getLocalStore(storeName: string, mode: IDBTransactionMode = 'readonly'): Promise<IDBObjectStore> {
-    const dbInstance = await this.connectLocal();
-    const transaction = dbInstance.transaction(storeName, mode);
-    return transaction.objectStore(storeName);
-  }
-
-  // --- Generic Cloud Fetcher ---
-  async cloudAll<T>(table: string): Promise<T[] | null> {
-    if (!supabase) return null;
+  
+  async all<T>(table: string): Promise<T[]> {
+    if (!supabase) return [];
     try {
       const { data, error } = await supabase.from(table).select('*');
       if (error) throw error;
-      return data as T[];
+      return (data as T[]) || [];
     } catch (err) {
-      console.warn(`Cloud fetch failed for table: ${table}. Falling back to local store.`);
+      console.error(`Error fetching from ${table}:`, err);
+      return [];
+    }
+  }
+
+  async save<T extends { id: string }>(table: string, item: T): Promise<T> {
+    if (!supabase) throw new Error(`Supabase not configured.`);
+    try {
+      const { error } = await supabase.from(table).upsert(item);
+      if (error) throw error;
+      return item;
+    } catch (err) {
+      console.error(`Error saving to ${table}:`, err);
+      throw err;
+    }
+  }
+
+  async delete(table: string, id: string): Promise<void> {
+    if (!supabase) return;
+    try {
+      const { error } = await supabase.from(table).delete().eq('id', id);
+      if (error) throw error;
+    } catch (err) {
+      console.error(`Error deleting from ${table}:`, err);
+      throw err;
+    }
+  }
+
+  async getById<T>(table: string, id: string): Promise<T | null> {
+    if (!supabase) return null;
+    try {
+      const { data, error } = await supabase.from(table).select('*').eq('id', id).single();
+      if (error && error.code !== 'PGRST116') throw error;
+      return (data as T) || null;
+    } catch (err) {
+      console.error(`Error getting item from ${table}:`, err);
       return null;
     }
   }
 
-  // --- Generic Cloud Saver ---
-  async cloudSave<T extends { id: string }>(table: string, item: T): Promise<boolean> {
-    if (!supabase) return false;
-    try {
-      const { error } = await supabase.from(table).upsert(item);
-      if (error) throw error;
-      return true;
-    } catch (err) {
-      console.error(`Cloud save failed for table: ${table}. Data stored locally.`);
-      return false;
-    }
-  }
-
-  // --- Generic Cloud Deleter ---
-  async cloudDelete(table: string, id: string): Promise<boolean> {
-    if (!supabase) return false;
-    try {
-      const { error } = await supabase.from(table).delete().eq('id', id);
-      if (error) throw error;
-      return true;
-    } catch (err) {
-      console.error(`Cloud delete failed for table: ${table}.`);
-      return false;
-    }
-  }
-
-  // --- Public Universal API ---
-
-  async all<T>(storeName: string): Promise<T[]> {
-    // 1. Attempt Server Retrieval
-    const cloudData = await this.cloudAll<T>(storeName);
-    if (cloudData) {
-      // Background Sync: Refresh Local Cache
-      const dbInstance = await this.connectLocal();
-      const transaction = dbInstance.transaction(storeName, 'readwrite');
-      const store = transaction.objectStore(storeName);
-      cloudData.forEach(item => store.put(item));
-      return cloudData;
-    }
-
-    // 2. Local Fallback (for offline or misconfigured cloud)
-    const store = await this.getLocalStore(storeName);
-    return new Promise((resolve) => {
-      const request = store.getAll();
-      request.onsuccess = () => resolve(request.result || []);
-      request.onerror = () => resolve([]);
-    });
-  }
-
-  async save<T extends { id: string }>(storeName: string, item: T): Promise<T> {
-    // 1. Store on Server
-    await this.cloudSave(storeName, item);
+  // --- Real-Time Subscription Helper ---
+  subscribe(table: string, callback: () => void): () => void {
+    if (!supabase) return () => {};
     
-    // 2. Store Locally
-    const store = await this.getLocalStore(storeName, 'readwrite');
-    return new Promise((resolve, reject) => {
-      const request = store.put(item);
-      request.onsuccess = () => resolve(item);
-      request.onerror = () => reject(`Error saving ${storeName} locally`);
-    });
-  }
+    const channel: RealtimeChannel = supabase
+      .channel(`public:${table}`)
+      .on(
+        'postgres_changes', 
+        { event: '*', schema: 'public', table: table }, 
+        () => {
+          console.debug(`Real-time update received for table: ${table}`);
+          callback();
+        }
+      )
+      .subscribe();
 
-  async delete(storeName: string, id: string): Promise<void> {
-    // 1. Remove from Server
-    await this.cloudDelete(storeName, id);
-    
-    // 2. Remove Locally
-    const store = await this.getLocalStore(storeName, 'readwrite');
-    return new Promise((resolve, reject) => {
-      const request = store.delete(id);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(`Error deleting ${id} from local ${storeName}`);
-    });
-  }
-
-  async getById<T>(storeName: string, id: string): Promise<T | null> {
-    // 1. Try Server First
-    if (supabase) {
-      const { data } = await supabase.from(storeName).select('*').eq('id', id).single();
-      if (data) return data as T;
-    }
-    
-    // 2. Local Fallback
-    const store = await this.getLocalStore(storeName);
-    return new Promise((resolve) => {
-      const request = store.get(id);
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => resolve(null);
-    });
+    return () => {
+      supabase?.removeChannel(channel);
+    };
   }
 }
 
 const engine = new DatabaseEngine();
 
-// --- Default Data for Bootstrapping ---
 const DEFAULT_USERS: User[] = [
   {
     id: 'u1',
@@ -186,32 +115,36 @@ const DEFAULT_SETTINGS: CompanySettings = {
   website: 'www.regaljsk.com'
 };
 
-// --- Exported Database API ---
 export const db = {
   users: {
     all: () => engine.all<User>(STORES.USERS),
     save: (user: User) => engine.save(STORES.USERS, user),
-    delete: (id: string) => engine.delete(STORES.USERS, id)
+    delete: (id: string) => engine.delete(STORES.USERS, id),
+    subscribe: (cb: () => void) => engine.subscribe(STORES.USERS, cb)
   },
   customers: {
     all: () => engine.all<Customer>(STORES.CUSTOMERS),
     save: (customer: Customer) => engine.save(STORES.CUSTOMERS, customer),
-    delete: (id: string) => engine.delete(STORES.CUSTOMERS, id)
+    delete: (id: string) => engine.delete(STORES.CUSTOMERS, id),
+    subscribe: (cb: () => void) => engine.subscribe(STORES.CUSTOMERS, cb)
   },
   services: {
     all: () => engine.all<Service>(STORES.SERVICES),
     save: (service: Service) => engine.save(STORES.SERVICES, service),
-    delete: (id: string) => engine.delete(STORES.SERVICES, id)
+    delete: (id: string) => engine.delete(STORES.SERVICES, id),
+    subscribe: (cb: () => void) => engine.subscribe(STORES.SERVICES, cb)
   },
   jobs: {
     all: () => engine.all<Job>(STORES.JOBS),
     save: (job: Job) => engine.save(STORES.JOBS, job),
-    delete: (id: string) => engine.delete(STORES.JOBS, id)
+    delete: (id: string) => engine.delete(STORES.JOBS, id),
+    subscribe: (cb: () => void) => engine.subscribe(STORES.JOBS, cb)
   },
   inventory: {
     all: () => engine.all<InventoryItem>(STORES.INVENTORY),
     save: (item: InventoryItem) => engine.save(STORES.INVENTORY, item),
-    delete: (id: string) => engine.delete(STORES.INVENTORY, id)
+    delete: (id: string) => engine.delete(STORES.INVENTORY, id),
+    subscribe: (cb: () => void) => engine.subscribe(STORES.INVENTORY, cb)
   },
   settings: {
     get: async (): Promise<CompanySettings> => {
@@ -220,7 +153,8 @@ export const db = {
     },
     save: async (settings: CompanySettings) => {
       await engine.save(STORES.SETTINGS, { ...settings, id: 'current_config' });
-    }
+    },
+    subscribe: (cb: () => void) => engine.subscribe(STORES.SETTINGS, cb)
   },
   auth: {
     getSession: async (): Promise<User | null> => {
@@ -236,8 +170,20 @@ export const db = {
       }
     },
     login: async (username: string, password: string): Promise<User | null> => {
-      const users = await db.users.all();
-      return users.find(u => u.username === username && u.password === password) || null;
+      if (!supabase) return null;
+      try {
+        const { data, error } = await supabase
+          .from(STORES.USERS)
+          .select('*')
+          .eq('username', username)
+          .eq('password', password)
+          .single();
+        
+        if (error) return null;
+        return data as User;
+      } catch (e) {
+        return null;
+      }
     }
   },
   system: {
@@ -281,21 +227,22 @@ export const db = {
     }
   },
   init: async () => {
-    // 1. Establish Local Connection
-    await engine.connectLocal();
-    
-    // 2. Bootstrap Cloud/Local with initial Admin if empty
-    const users = await db.users.all();
-    if (users.length === 0) {
-      console.log('Provisioning default administrative credentials...');
-      for (const u of DEFAULT_USERS) await db.users.save(u);
+    if (!supabase) {
+      console.warn("Supabase is not initialized. Database will be empty.");
+      return;
     }
-    
-    // 3. Ensure base configuration exists
-    const currentSettings = await engine.getById(STORES.SETTINGS, 'current_config');
-    if (!currentSettings) {
-      await db.settings.save(DEFAULT_SETTINGS);
+    try {
+      const users = await db.users.all();
+      if (users.length === 0) {
+        for (const u of DEFAULT_USERS) await db.users.save(u);
+      }
+      const currentSettings = await engine.getById(STORES.SETTINGS, 'current_config');
+      if (!currentSettings) {
+        await db.settings.save(DEFAULT_SETTINGS);
+      }
+    } catch (err) {
+      console.error("Initialization failed:", err);
     }
   },
-  isCloudActive: () => !!supabase
+  isCloudActive: () => !!supabase && !!SUPABASE_URL
 };

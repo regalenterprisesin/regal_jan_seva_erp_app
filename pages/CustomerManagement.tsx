@@ -15,16 +15,20 @@ const CustomerManagement: React.FC = () => {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const fetchCustomers = async () => {
+    try {
+      const data = await db.customers.all();
+      setCustomers(data);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        const data = await db.customers.all();
-        setCustomers(data);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchCustomers();
+    // Subscribe to real-time updates
+    const unsub = db.customers.subscribe(fetchCustomers);
+    return () => unsub();
   }, []);
 
   const [formData, setFormData] = useState<Omit<Customer, 'id' | 'createdAt'>>({
@@ -49,7 +53,6 @@ const CustomerManagement: React.FC = () => {
     if (editingCustomer) {
       const updatedCustomer = { ...editingCustomer, ...formData };
       await db.customers.save(updatedCustomer);
-      setCustomers(customers.map(c => c.id === editingCustomer.id ? updatedCustomer : c));
     } else {
       const newCustomer: Customer = {
         ...formData,
@@ -57,7 +60,6 @@ const CustomerManagement: React.FC = () => {
         createdAt: new Date().toISOString()
       };
       await db.customers.save(newCustomer);
-      setCustomers([...customers, newCustomer]);
     }
     closeModal();
   };
@@ -92,9 +94,6 @@ const CustomerManagement: React.FC = () => {
             count++;
           }
         }
-
-        const freshData = await db.customers.all();
-        setCustomers(freshData);
         alert(`Successfully imported ${count} customers.`);
       } catch (err) {
         console.error(err);
@@ -130,7 +129,6 @@ const CustomerManagement: React.FC = () => {
     if (window.confirm('Are you sure you want to delete this customer record?')) {
       try {
         await db.customers.delete(id);
-        setCustomers(customers.filter(c => c.id !== id));
       } catch (error) {
         console.error("Failed to delete customer", error);
         alert("An error occurred while trying to delete the record.");
@@ -282,7 +280,7 @@ const CustomerManagement: React.FC = () => {
                 </div>
                 <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={() => openModal(customer)} className="p-2 bg-slate-50 dark:bg-slate-800 rounded-[15px] text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white border border-slate-100 dark:border-slate-800"><Edit size={16}/></button>
-                  <button onClick={() => handleDelete(customer.id)} className="p-2 bg-slate-50 dark:bg-slate-800 rounded-[15px] text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 border border-slate-100 dark:border-slate-800"><Trash2 size={16}/></button>
+                  <button onClick={() => handleDelete(customer.id)} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-[15px] text-slate-400 dark:text-slate-500 hover:text-rose-600 dark:hover:text-rose-400 border border-slate-100 dark:border-slate-800"><Trash2 size={16}/></button>
                 </div>
               </div>
               <h3 className="font-black text-lg text-slate-900 dark:text-slate-100 mb-4">{customer.name}</h3>
@@ -309,12 +307,12 @@ const CustomerManagement: React.FC = () => {
             <div className="p-10 space-y-6">
               <div>
                 <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2.5">Legal Full Name *</label>
-                <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-5 py-4 rounded-[15px] bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none focus:border-blue-500 transition-all" placeholder="Enter name" />
+                <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-5 py-4 rounded-[15px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none focus:border-blue-500 transition-all" placeholder="Enter name" />
               </div>
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2.5">Contact Number *</label>
-                  <input type="text" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full px-5 py-4 rounded-[15px] bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none focus:border-blue-500 transition-all" placeholder="+91" />
+                  <input type="text" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} className="w-full px-5 py-4 rounded-[15px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none focus:border-blue-500 transition-all" placeholder="+91" />
                 </div>
                 <div>
                   <label className="block text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-2.5">Aadhaar (12-Digit)</label>

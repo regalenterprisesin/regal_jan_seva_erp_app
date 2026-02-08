@@ -12,16 +12,20 @@ const InventoryManagement: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
 
+  const fetchInventory = async () => {
+    try {
+      const data = await db.inventory.all();
+      setItems(data);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchInventory = async () => {
-      try {
-        const data = await db.inventory.all();
-        setItems(data);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchInventory();
+    // Real-time synchronization
+    const unsub = db.inventory.subscribe(fetchInventory);
+    return () => unsub();
   }, []);
 
   const [formData, setFormData] = useState<Omit<InventoryItem, 'id' | 'lastUpdated'>>({
@@ -39,11 +43,9 @@ const InventoryManagement: React.FC = () => {
     if (editingItem) {
       const updatedItem = { ...editingItem, ...data };
       await db.inventory.save(updatedItem);
-      setItems(items.map(i => i.id === editingItem.id ? updatedItem : i));
     } else {
       const newItem: InventoryItem = { ...data, id: 'inv' + Date.now() } as InventoryItem;
       await db.inventory.save(newItem);
-      setItems([...items, newItem]);
     }
     closeModal();
   };
@@ -51,7 +53,6 @@ const InventoryManagement: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (window.confirm('Delete stock item from inventory?')) {
       await db.inventory.delete(id);
-      setItems(items.filter(i => i.id !== id));
     }
   };
 

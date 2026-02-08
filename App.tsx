@@ -58,7 +58,14 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (currentUser) fetchNotifications();
+    if (currentUser) {
+      fetchNotifications();
+      // Real-time notification subscription
+      const unsub = db.jobs.subscribe(() => {
+        fetchNotifications();
+      });
+      return () => unsub();
+    }
   }, [location.pathname, currentUser]);
 
   useEffect(() => {

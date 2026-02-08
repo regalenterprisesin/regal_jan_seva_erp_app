@@ -41,22 +41,33 @@ const JobManagement: React.FC = () => {
     status: 'PENDING'
   });
 
+  const fetchData = async () => {
+    try {
+      const [jobsData, customersData, servicesData] = await Promise.all([
+        db.jobs.all(),
+        db.customers.all(),
+        db.services.all()
+      ]);
+      setJobs(jobsData);
+      setCustomers(customersData);
+      setServices(servicesData);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [jobsData, customersData, servicesData] = await Promise.all([
-          db.jobs.all(),
-          db.customers.all(),
-          db.services.all()
-        ]);
-        setJobs(jobsData);
-        setCustomers(customersData);
-        setServices(servicesData);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchData();
+    // Real-time subscriptions
+    const unsubJobs = db.jobs.subscribe(fetchData);
+    const unsubCustomers = db.customers.subscribe(fetchData);
+    const unsubServices = db.services.subscribe(fetchData);
+
+    return () => {
+      unsubJobs();
+      unsubCustomers();
+      unsubServices();
+    };
   }, []);
 
   const flattenedTasks = useMemo(() => {
@@ -167,11 +178,9 @@ const JobManagement: React.FC = () => {
     if (editingJob) {
       const updatedJob = { ...editingJob, ...jobData };
       await db.jobs.save(updatedJob);
-      setJobs(jobs.map(j => j.id === editingJob.id ? updatedJob : j));
     } else {
       const newJob: Job = { ...jobData, id: 'job' + Date.now(), createdAt: new Date().toISOString() };
       await db.jobs.save(newJob);
-      setJobs([...jobs, newJob]);
     }
     closeModal();
   };
@@ -181,13 +190,11 @@ const JobManagement: React.FC = () => {
     newItems[itemIndex] = { ...newItems[itemIndex], status: newStatus };
     const updatedJob = { ...job, items: newItems, updatedAt: new Date().toISOString() };
     await db.jobs.save(updatedJob);
-    setJobs(jobs.map(j => j.id === job.id ? updatedJob : j));
   };
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Permanently delete this record?')) {
       await db.jobs.delete(id);
-      setJobs(jobs.filter(j => j.id !== id));
       if (editingJob?.id === id) closeModal();
     }
   };
@@ -469,7 +476,7 @@ const JobManagement: React.FC = () => {
                    <div className="flex flex-col"><span className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1">Pending Balance</span><span className={`text-xl font-black tracking-tighter ${ totals.pendingAmount > 0 ? 'text-rose-600' : 'text-emerald-500' }`}>₹{totals.pendingAmount}</span></div>
                 </div>
               </div>
-              <div className="flex space-x-4 w-full md:w-auto"><button onClick={closeModal} className="px-6 py-3.5 font-black text-slate-400 uppercase tracking-widest text-[9px] hover:text-slate-900 dark:hover:text-white transition-colors">Discard</button><button onClick={handleSave} className="bg-slate-900 dark:bg-white text-white dark:text-black px-10 py-3.5 rounded-[15px] font-black text-xs uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-blue-500 transition-all shadow-xl flex items-center justify-center space-x-2"><Save size={18} /><span>Sync & Commit</span></button></div>
+              <div className="flex space-x-4 w-full md:w-auto"><button onClick={closeModal} className="px-6 py-3.5 font-black text-slate-400 uppercase tracking-widest text-[9px] hover:text-slate-900 dark:hover:text-white transition-colors">Discard</button><button onClick={handleSave} className="bg-slate-900 dark:bg-white text-white dark:text-black px-10 py-3.5 rounded-[15px] font-black text-xs uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-xl flex items-center justify-center space-x-2"><Save size={18} /><span>Sync & Commit</span></button></div>
             </div>
           </div>
         </div>

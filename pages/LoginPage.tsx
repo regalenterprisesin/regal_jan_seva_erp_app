@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { 
   Shield, Lock, User as UserIcon, AlertCircle, Globe, CheckCircle2, 
   Loader2, Sparkles, ArrowRight, Fingerprint, FileText, CreditCard, 
-  Smartphone, Zap, ChevronRight, Activity, Cpu, Mail, ArrowLeft, Key
+  Smartphone, Zap, ChevronRight, Activity, Cpu, Mail, ArrowLeft, Key, Cloud, CloudOff
 } from 'lucide-react';
 import { db } from '../db';
 import { User } from '../types';
@@ -56,7 +56,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
         setCurrentUser(user);
         navigate('/dashboard');
       } else {
-        setError('Invalid credentials, Try Agian');
+        setError('Invalid credentials, Try Again');
       }
     } catch (err) {
       setError('System connection failed. Retrying...');
@@ -76,7 +76,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
       
       if (user) {
         setTargetUser(user);
-        // Simulate sending email
         setTimeout(() => {
           setRecoveryStep('PASSWORD');
           setIsLoading(false);
@@ -120,11 +119,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
     setSuccessMsg('');
   };
 
+  const isCloudActive = db.isCloudActive();
+
   return (
     <div className="flex-1 flex min-h-screen bg-white dark:bg-slate-950 transition-colors duration-500 overflow-hidden">
       {/* Left Side: Vector Animated Illustration & Services */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-slate-900">
-        {/* Animated Vector Pattern Background */}
         <div className="absolute inset-0 opacity-20">
           <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -136,7 +136,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
           </svg>
         </div>
 
-        {/* Floating Vector Shapes */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/20 rounded-full blur-[120px] animate-pulse"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/20 rounded-full blur-[120px] animate-pulse delay-700"></div>
@@ -173,30 +172,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <ServiceLink 
-                icon={<Fingerprint size={20} />} 
-                title="Aadhaar" 
-                desc="Enrollments & Updates" 
-                color="blue" 
-              />
-              <ServiceLink 
-                icon={<FileText size={20} />} 
-                title="PAN & IT" 
-                desc="Fresh Cards & Filings" 
-                color="indigo" 
-              />
-              <ServiceLink 
-                icon={<CreditCard size={20} />} 
-                title="Banking" 
-                desc="AePS & Money Transfers" 
-                color="emerald" 
-              />
-              <ServiceLink 
-                icon={<Smartphone size={20} />} 
-                title="Utility" 
-                desc="Billings & Recharges" 
-                color="amber" 
-              />
+              <ServiceLink icon={<Fingerprint size={20} />} title="Aadhaar" desc="Enrollments & Updates" color="blue" />
+              <ServiceLink icon={<FileText size={20} />} title="PAN & IT" desc="Fresh Cards & Filings" color="indigo" />
+              <ServiceLink icon={<CreditCard size={20} />} title="Banking" desc="AePS & Money Transfers" color="emerald" />
+              <ServiceLink icon={<Smartphone size={20} />} title="Utility" desc="Billings & Recharges" color="amber" />
             </div>
           </div>
           
@@ -231,9 +210,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ setCurrentUser }) => {
                 <span className="text-[6px] font-black text-blue-600 uppercase tracking-[0.5em] mt-1.5">INNOVATION IS OUR MOTTO</span>
               </div>
             </div>
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-1 bg-blue-600 rounded-full"></div>
-              <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Portal Access</span>
+            
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-1 bg-blue-600 rounded-full"></div>
+                <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Portal Access</span>
+              </div>
+              <div className={`flex items-center space-x-2 px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${
+                isCloudActive ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'
+              }`}>
+                {isCloudActive ? <Cloud size={10} /> : <CloudOff size={10} />}
+                <span>{isCloudActive ? 'Supabase Connected' : 'Local Only'}</span>
+              </div>
             </div>
             
             {!showRecovery ? (
