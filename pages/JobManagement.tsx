@@ -5,7 +5,7 @@ import { Job, Customer, Service, JobStatus, JobItem } from '../types';
 import { 
   Plus, X, Save, User, IndianRupee, Loader2, Printer, Download, 
   Trash2, Edit, ArrowUpDown, PlusCircle, Smartphone, Fingerprint,
-  ChevronDown, ArrowUp, ArrowDown
+  ChevronDown, ArrowUp, ArrowDown, AlertCircle
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -25,7 +25,7 @@ const JobManagement: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   
-  const [view, setView] = useState<'LIST' | 'BOARD'>('LIST');
+  const [view, setView] = useState<'LIST' | 'BOARD' | 'OVERDUE'>('LIST');
   const [showModal, setShowModal] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [receiptJob, setReceiptJob] = useState<Job | null>(null);
@@ -66,9 +66,18 @@ const JobManagement: React.FC = () => {
     return () => {
       unsubJobs();
       unsubCustomers();
+      // // Fix: Removed call to undefined unsubInventory variable which caused compilation error
       unsubServices();
     };
   }, []);
+
+  // Helper to check if a task is overdue
+  const isOverdue = (status: string, date: string) => {
+    if (status === 'COMPLETED') return false;
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    return new Date(date) < threeDaysAgo;
+  };
 
   const flattenedTasks = useMemo(() => {
     return jobs.flatMap(job => 
@@ -85,16 +94,24 @@ const JobManagement: React.FC = () => {
           serviceName: service?.name || 'Unknown Service',
           date: job.createdAt,
           status: item.status || 'PENDING',
-          originalJob: job
+          originalJob: job,
+          isOverdue: isOverdue(item.status || 'PENDING', job.createdAt)
         };
       })
     );
   }, [jobs, customers, services]);
 
+  const tasksToDisplay = useMemo(() => {
+    if (view === 'OVERDUE') {
+      return flattenedTasks.filter(t => t.isOverdue);
+    }
+    return flattenedTasks;
+  }, [flattenedTasks, view]);
+
   const sortedTasks = useMemo(() => {
-    if (!sortConfig.direction) return flattenedTasks;
+    if (!sortConfig.direction) return tasksToDisplay;
     
-    return [...flattenedTasks].sort((a, b) => {
+    return [...tasksToDisplay].sort((a, b) => {
       const aValue = String(a[sortConfig.field]).toLowerCase();
       const bValue = String(b[sortConfig.field]).toLowerCase();
       
@@ -102,7 +119,11 @@ const JobManagement: React.FC = () => {
       if (aValue > bValue) return sortConfig.direction === 'ASC' ? 1 : -1;
       return 0;
     });
-  }, [flattenedTasks, sortConfig]);
+  }, [tasksToDisplay, sortConfig]);
+
+  const overdueCount = useMemo(() => {
+    return flattenedTasks.filter(t => t.isOverdue).length;
+  }, [flattenedTasks]);
 
   const [formData, setFormData] = useState<Partial<Job>>({
     customerId: '',
@@ -293,10 +314,14 @@ const JobManagement: React.FC = () => {
         <div className="flex bg-white dark:bg-slate-900 p-1 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-sm">
           <button onClick={() => setView('LIST')} className={`px-6 py-2 rounded-[15px] text-xs font-black uppercase tracking-widest transition-all ${view === 'LIST' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>Workflow List</button>
           <button onClick={() => setView('BOARD')} className={`px-6 py-2 rounded-[15px] text-xs font-black uppercase tracking-widest transition-all ${view === 'BOARD' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>Board View</button>
+          <button onClick={() => setView('OVERDUE')} className={`px-6 py-2 rounded-[15px] text-xs font-black uppercase tracking-widest transition-all flex items-center ${view === 'OVERDUE' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-400 hover:text-rose-600 dark:hover:text-rose-400'}`}>
+            Overdue
+            {overdueCount > 0 && <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[8px] font-black ${view === 'OVERDUE' ? 'bg-white text-rose-600' : 'bg-rose-600 text-white'}`}>{overdueCount}</span>}
+          </button>
         </div>
       </div>
 
-      {view === 'LIST' ? (
+      {(view === 'LIST' || view === 'OVERDUE') ? (
         <div className="bg-white dark:bg-slate-900 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-xl overflow-hidden print:hidden">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -334,52 +359,63 @@ const JobManagement: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-              {sortedTasks.map(task => (
-                <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-                  <td className="px-8 py-5">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800 flex items-center justify-center text-[10px] font-black text-blue-600 dark:text-blue-400 shrink-0">
-                        {task.customerName[0]}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-black text-slate-900 dark:text-white">{task.customerName}</span>
-                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-500">{task.customerPhone}</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-5">
-                    <span className="text-[11px] font-mono text-blue-600 dark:text-blue-400 font-black tracking-widest uppercase">
-                      {task.customerAadhaar ? task.customerAadhaar.replace(/(\d{4})/g, '$1 ').trim() : 'NO AADHAAR'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="font-black text-slate-900 dark:text-white truncate max-w-xs">{task.serviceName}</div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: #{task.jobId.slice(-6).toUpperCase()}</div>
-                  </td>
-                  <td className="px-6 py-5 text-sm font-bold text-slate-500 dark:text-slate-500">
-                    {new Date(task.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </td>
-                  <td className="px-6 py-5">
-                    <div className="flex items-center space-x-2">
-                      <select 
-                        value={task.status}
-                        onChange={(e) => handleItemStatusUpdate(task.originalJob, task.itemIndex, e.target.value as JobStatus)}
-                        className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-[15px] border outline-none bg-transparent cursor-pointer transition-all ${
-                          task.status === 'COMPLETED' ? 'text-emerald-600 border-emerald-500/20 bg-emerald-500/5' :
-                          task.status === 'PENDING' ? 'text-amber-600 border-amber-500/20 bg-amber-500/5' :
-                          task.status === 'CANCELLED' ? 'text-rose-600 border-rose-500/20 bg-rose-500/5' :
-                          'text-blue-600 border-blue-500/20 bg-blue-500/5'
-                        }`}
-                      >
-                        <option value="PENDING">Pending</option>
-                        <option value="IN_PROGRESS">In Progress</option>
-                        <option value="COMPLETED">Completed</option>
-                        <option value="CANCELLED">Cancelled</option>
-                      </select>
-                    </div>
+              {sortedTasks.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-8 py-20 text-center text-sm font-bold text-slate-300 uppercase tracking-widest italic">
+                    {view === 'OVERDUE' ? "No overdue jobs found." : "No records found in workflow."}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                sortedTasks.map(task => (
+                  <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+                    <td className="px-8 py-5">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800 border ${task.isOverdue ? 'border-rose-200 dark:border-rose-900' : 'border-slate-100 dark:border-slate-800'} flex items-center justify-center text-[10px] font-black ${task.isOverdue ? 'text-rose-600' : 'text-blue-600 dark:text-blue-400'} shrink-0`}>
+                          {task.customerName[0]}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className={`text-sm font-black ${task.isOverdue ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}>{task.customerName}</span>
+                          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-500">{task.customerPhone}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <span className="text-[11px] font-mono text-blue-600 dark:text-blue-400 font-black tracking-widest uppercase">
+                        {task.customerAadhaar ? task.customerAadhaar.replace(/(\d{4})/g, '$1 ').trim() : 'NO AADHAAR'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="font-black text-slate-900 dark:text-white truncate max-w-xs">{task.serviceName}</div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ID: #{task.jobId.slice(-6).toUpperCase()}</div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className={`text-sm font-bold flex items-center ${task.isOverdue ? 'text-rose-600' : 'text-slate-500 dark:text-slate-500'}`}>
+                        {new Date(task.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        {task.isOverdue && <AlertCircle size={14} className="ml-2" />}
+                      </div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex items-center space-x-2">
+                        <select 
+                          value={task.status}
+                          onChange={(e) => handleItemStatusUpdate(task.originalJob, task.itemIndex, e.target.value as JobStatus)}
+                          className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-[15px] border outline-none bg-transparent cursor-pointer transition-all ${
+                            task.status === 'COMPLETED' ? 'text-emerald-600 border-emerald-500/20 bg-emerald-500/5' :
+                            task.status === 'PENDING' ? 'text-amber-600 border-amber-500/20 bg-amber-500/5' :
+                            task.status === 'CANCELLED' ? 'text-rose-600 border-rose-500/20 bg-rose-500/5' :
+                            'text-blue-600 border-blue-500/20 bg-blue-500/5'
+                          }`}
+                        >
+                          <option value="PENDING">Pending</option>
+                          <option value="IN_PROGRESS">In Progress</option>
+                          <option value="COMPLETED">Completed</option>
+                          <option value="CANCELLED">Cancelled</option>
+                        </select>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -393,11 +429,12 @@ const JobManagement: React.FC = () => {
               </h4>
               <div className="space-y-4">
                 {flattenedTasks.filter(t => t.status === status).map(task => (
-                  <div key={task.id} onClick={() => openModal(task.originalJob)} className="bg-slate-50 dark:bg-slate-950 p-5 rounded-[15px] border border-transparent cursor-pointer hover:border-blue-500/50 hover:bg-white dark:hover:bg-slate-800 transition-all group relative shadow-sm">
+                  <div key={task.id} onClick={() => openModal(task.originalJob)} className={`bg-slate-50 dark:bg-slate-950 p-5 rounded-[15px] border ${task.isOverdue ? 'border-rose-500/30' : 'border-transparent'} cursor-pointer hover:border-blue-500/50 hover:bg-white dark:hover:bg-slate-800 transition-all group relative shadow-sm`}>
                     <p className="text-xs font-black text-slate-900 dark:text-white mb-1">{task.serviceName}</p>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{task.customerName}</p>
                     <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800">
                        <span className="text-[10px] font-black text-slate-400">ID: #{task.jobId.slice(-4)}</span>
+                       {task.isOverdue && <span className="text-[8px] font-black uppercase text-rose-500 flex items-center"><AlertCircle size={10} className="mr-1" /> Overdue</span>}
                     </div>
                   </div>
                 ))}
@@ -460,7 +497,7 @@ const JobManagement: React.FC = () => {
 
               <div className="flex-1 bg-white dark:bg-slate-950 rounded-[15px] border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm min-h-[200px] overflow-y-auto">
                 <table className="w-full text-left"><thead className="bg-slate-50 dark:bg-slate-900/80 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 sticky top-0 z-10"><tr><th className="px-8 py-4">Bill Item Specification</th><th className="px-6 py-4 text-center">Unit Price</th><th className="px-6 py-4 text-center">Qty</th><th className="px-6 py-4 text-center">Discount</th><th className="px-6 py-4 text-right">Net Value</th><th className="px-8 py-4 text-right">Action</th></tr></thead>
-                  <tbody className="divide-y divide-slate-50 dark:divide-slate-800">{(formData.items || []).length === 0 ? (<tr><td colSpan={6} className="px-8 py-12 text-center text-xs font-bold text-slate-300 dark:text-slate-700 uppercase tracking-widest italic">No operational data queued</td></tr>) : (formData.items?.map((item, idx) => (<tr key={idx} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800 transition-colors"><td className="px-8 py-4"><div className="text-xs font-black text-slate-800 dark:text-white uppercase">{getService(item.serviceId)?.name || 'Custom'}</div></td><td className="px-6 py-4 text-center text-xs font-bold text-slate-500">₹{item.unitPrice}</td><td className="px-6 py-4 text-center text-xs font-black text-slate-800 dark:text-white">{item.quantity}</td><td className="px-6 py-4 text-center text-xs font-black text-rose-400">₹{item.discount}</td><td className="px-6 py-4 text-right text-xs font-black text-slate-900 dark:text-white tracking-tighter">₹{item.subtotal}</td><td className="px-8 py-4 text-right"><button onClick={() => removeStagedItem(idx)} className="p-1.5 text-slate-300 dark:text-slate-700 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14}/></button></td></tr>)))}</tbody>
+                  <tbody className="divide-y divide-slate-50 dark:divide-slate-800">{(formData.items || []).length === 0 ? (<tr><td colSpan={6} className="px-8 py-12 text-center text-xs font-bold text-slate-300 dark:text-slate-700 uppercase tracking-widest italic">No operational data queued</td></tr>) : (formData.items?.map((item, idx) => (<tr key={idx} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800 transition-colors"><td className="px-8 py-4"><div className="text-xs font-black text-slate-800 dark:text-white uppercase">{getService(item.serviceId)?.name || 'Custom'}</div></td><td className="px-6 py-4 text-center text-sm font-bold text-slate-500">₹{item.unitPrice}</td><td className="px-6 py-4 text-center text-xs font-black text-slate-800 dark:text-white">{item.quantity}</td><td className="px-6 py-4 text-center text-xs font-black text-rose-400">₹{item.discount}</td><td className="px-6 py-4 text-right text-xs font-black text-slate-900 dark:text-white tracking-tighter">₹{item.subtotal}</td><td className="px-8 py-4 text-right"><button onClick={() => removeStagedItem(idx)} className="p-1.5 text-slate-300 dark:text-slate-700 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14}/></button></td></tr>)))}</tbody>
                 </table>
               </div>
             </div>

@@ -10,13 +10,13 @@ import { GoogleGenAI } from "@google/genai";
 
 const BANNER_SLIDES = [
   {
-    image: "https://images.unsplash.com/photo-1531297484001-80022131f5a1?auto=format&fit=crop&q=80&w=1200",
+    image: "https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&q=80&w=1200",
     title: "Empowering Digital India",
-    subtitle: "Your Trusted Partner for all Government Digital Services.",
+    subtitle: "Your Trusted Partner for all Government Digital Services..",
     cta: "Explore Services"
   },
   {
-    image: "https://images.unsplash.com/photo-1601597111158-2fcee29a1ee1?auto=format&fit=crop&q=80&w=1200",
+    image: "https://plus.unsplash.com/premium_photo-1682092120038-038c7f551731?auto=format&fit=crop&q=80&w=1200",
     title: "Instant Banking Services",
     subtitle: "AePS, Money Transfer, and Insurance at your doorstep.",
     cta: "Check Banking"
@@ -175,7 +175,7 @@ const HomePage: React.FC = () => {
             RE
           </div>
           <div className="flex flex-col">
-            <span className="text-xl font-bold text-slate-800 leading-none">Regal Jan Seva</span>
+            <span className="text-xl font-bold text-slate-800 leading-none uppercase">Regal Jan Seva</span>
             <span className="text-[6px] font-black text-blue-600 uppercase tracking-[0.5em] mt-1.5">INNOVATION IS OUR MOTTO</span>
           </div>
         </div>
@@ -210,10 +210,10 @@ const HomePage: React.FC = () => {
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
                 <div className="max-w-4xl animate-in fade-in slide-in-from-bottom-8 duration-700">
                   <h2 className="text-blue-400 font-bold tracking-widest uppercase text-sm mb-4">Common Service Centre (CSC)</h2>
-                  <h1 className="text-4xl md:text-7xl font-extrabold text-white leading-tight mb-6">
+                  <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold text-white leading-tight mb-6 whitespace-nowrap">
                     {slide.title}
                   </h1>
-                  <p className="text-lg md:text-xl text-slate-200 mb-8 max-w-2xl mx-auto">
+                  <p className="text-lg md:text-xl text-slate-200 mb-8 max-w-3xl mx-auto line-clamp-4">
                     {slide.subtitle}
                   </p>
                   <div className="flex justify-center gap-4">
