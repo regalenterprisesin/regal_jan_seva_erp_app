@@ -7,8 +7,6 @@ import {
   Trash2, Edit, ArrowUpDown, PlusCircle, Smartphone, Fingerprint,
   ChevronDown, ArrowUp, ArrowDown, AlertCircle
 } from 'lucide-react';
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
 
 type SortField = 'customerName' | 'customerAadhaar' | 'serviceName' | 'date' | 'status';
 type SortDirection = 'ASC' | 'DESC' | null;
@@ -49,6 +47,8 @@ const JobManagement: React.FC = () => {
       setJobs(jobsData);
       setCustomers(customersData);
       setServices(servicesData);
+    } catch (error) {
+      console.error("Fetch error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -56,6 +56,7 @@ const JobManagement: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+    // Real-time synchronization
     const unsubJobs = db.jobs.subscribe(fetchData);
     const unsubCustomers = db.customers.subscribe(fetchData);
     const unsubServices = db.services.subscribe(fetchData);
@@ -178,7 +179,6 @@ const JobManagement: React.FC = () => {
     const balance = totals.pendingAmount;
     const paymentStatus = balance === 0 ? 'PAID' : (formData.paidAmount || 0) > 0 ? 'PARTIAL' : 'UNPAID';
 
-    // Calculate overall job status from items
     let overallStatus: JobStatus = 'PENDING';
     if (formData.items.every(i => i.status === 'COMPLETED')) overallStatus = 'COMPLETED';
     else if (formData.items.some(i => i.status === 'IN_PROGRESS' || i.status === 'COMPLETED')) overallStatus = 'IN_PROGRESS';
@@ -205,7 +205,6 @@ const JobManagement: React.FC = () => {
     const newItems = [...job.items];
     newItems[itemIndex] = { ...newItems[itemIndex], status: newStatus };
     
-    // Sync overall status
     let overallStatus: JobStatus = 'PENDING';
     if (newItems.every(i => i.status === 'COMPLETED')) overallStatus = 'COMPLETED';
     else if (newItems.some(i => i.status === 'IN_PROGRESS' || i.status === 'COMPLETED')) overallStatus = 'IN_PROGRESS';
@@ -217,7 +216,16 @@ const JobManagement: React.FC = () => {
       status: overallStatus, 
       updatedAt: new Date().toISOString() 
     };
-    await db.jobs.save(updatedJob);
+
+    // INSTANT REFLECTION: Optimistic UI Update
+    setJobs(prev => prev.map(j => j.id === job.id ? updatedJob : j));
+
+    try {
+      await db.jobs.save(updatedJob);
+    } catch (err) {
+      console.error("Save failed, rolling back status:", err);
+      fetchData(); // Sync with actual db state if save fails
+    }
   };
 
   const openModal = (job?: Job) => {
@@ -393,14 +401,14 @@ const JobManagement: React.FC = () => {
                 </div>
                 <div className="col-span-4 space-y-2">
                   <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Aadhaar Identity</label>
-                  <div className="flex items-center space-x-3 bg-white dark:bg-slate-900 px-5 py-3.5 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-sm min-h-[52px]">
+                  <div className="flex items-center space-x-3 bg-white dark:bg-slate-900 px-5 py-3 rounded-[15px] border border-slate-200 dark:border-slate-700 shadow-sm min-h-[52px]">
                     <Fingerprint size={18} className="text-slate-400" />
                     <span className="text-xs font-mono font-black tracking-widest text-slate-700 dark:text-slate-300">{currentCustomer?.aadhaarNumber ? currentCustomer.aadhaarNumber.replace(/(\d{4})/g, '$1 ').trim() : '0000 0000 0000'}</span>
                   </div>
                 </div>
                 <div className="col-span-4 space-y-2">
                   <label className="block text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Mobile Access</label>
-                  <div className="flex items-center space-x-3 bg-white dark:bg-slate-900 px-5 py-3.5 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-sm min-h-[52px]">
+                  <div className="flex items-center space-x-3 bg-white dark:bg-slate-900 px-5 py-3 rounded-[15px] border border-slate-200 dark:border-slate-700 shadow-sm min-h-[52px]">
                     <Smartphone size={18} className="text-slate-400" />
                     <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{currentCustomer?.phone || '+91 00000 00000'}</span>
                   </div>
@@ -409,7 +417,7 @@ const JobManagement: React.FC = () => {
 
               <div className="space-y-4">
                 <div className="flex items-center space-x-3 ml-2 text-blue-600"><PlusCircle size={14} /><h4 className="text-[9px] font-black uppercase tracking-widest">Service Staging Area</h4></div>
-                <div className="bg-white dark:bg-slate-950 p-6 rounded-[15px] border border-blue-50 dark:border-blue-900/30 shadow-xl grid grid-cols-12 gap-4 items-end">
+                <div className="bg-white dark:bg-slate-950 p-6 rounded-[15px] border border-blue-500/20 shadow-xl grid grid-cols-12 gap-4 items-end">
                   <div className="col-span-3"><label className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Particulars</label><select value={currentItem.serviceId} onChange={(e) => handleServiceSelect(e.target.value)} className={selectClass}><option value="">Select Service Catalog</option>{services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
                   <div className="col-span-1"><label className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Quantity</label><input type="number" min="1" value={currentItem.quantity} onChange={(e) => setCurrentItem({...currentItem, quantity: Number(e.target.value)})} className={inputClass} /></div>
                   <div className="col-span-2"><label className="block text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Unit Rate (₹)</label><input type="number" value={currentItem.unitPrice} onChange={(e) => setCurrentItem({...currentItem, unitPrice: Number(e.target.value)})} className={inputClass} /></div>
@@ -421,7 +429,7 @@ const JobManagement: React.FC = () => {
               </div>
 
               <div className="flex-1 bg-white dark:bg-slate-950 rounded-[15px] border border-slate-100 dark:border-slate-800 overflow-hidden shadow-sm min-h-[200px] overflow-y-auto">
-                <table className="w-full text-left"><thead className="bg-slate-50 dark:bg-slate-900/80 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 sticky top-0 z-10"><tr><th className="px-8 py-4">Bill Item Specification</th><th className="px-6 py-4 text-center">Unit Price</th><th className="px-6 py-4 text-center">Qty</th><th className="px-6 py-4 text-center">Discount</th><th className="px-6 py-4 text-right">Net Value</th><th className="px-8 py-4 text-right">Action</th></tr></thead>
+                <table className="w-full text-left"><thead className="bg-slate-50 dark:bg-slate-800/80 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 sticky top-0 z-10"><tr><th className="px-8 py-4">Bill Item Specification</th><th className="px-6 py-4 text-center">Unit Price</th><th className="px-6 py-4 text-center">Qty</th><th className="px-6 py-4 text-center">Discount</th><th className="px-6 py-4 text-right">Net Value</th><th className="px-8 py-4 text-right">Action</th></tr></thead>
                   <tbody className="divide-y divide-slate-50 dark:divide-slate-800">{(formData.items || []).length === 0 ? (<tr><td colSpan={6} className="px-8 py-12 text-center text-xs font-bold text-slate-300 dark:text-slate-700 uppercase tracking-widest italic">No operational data queued</td></tr>) : (formData.items?.map((item, idx) => (<tr key={idx} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800 transition-colors"><td className="px-8 py-4"><div className="text-xs font-black text-slate-800 dark:text-white uppercase">{getService(item.serviceId)?.name || 'Custom'}</div></td><td className="px-6 py-4 text-center text-sm font-bold text-slate-500">₹{item.unitPrice}</td><td className="px-6 py-4 text-center text-xs font-black text-slate-800 dark:text-white">{item.quantity}</td><td className="px-6 py-4 text-center text-xs font-black text-rose-400">₹{item.discount}</td><td className="px-6 py-4 text-right text-xs font-black text-slate-900 dark:text-white tracking-tighter">₹{item.subtotal}</td><td className="px-8 py-4 text-right"><button onClick={() => removeStagedItem(idx)} className="p-1.5 text-slate-300 dark:text-slate-700 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={14}/></button></td></tr>)))}</tbody>
                 </table>
               </div>
