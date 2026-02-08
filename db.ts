@@ -16,9 +16,9 @@ const STORES = {
 };
 
 // --- Cloud Connectivity (Supabase) ---
-// Note: These will be provided by environment variables in the execution context.
-const SUPABASE_URL = process.env.SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
+// Safely access env vars to prevent "Cannot read properties of undefined (reading 'VITE_SUPABASE_URL')"
+const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || (process.env as any)?.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || (process.env as any)?.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY || '';
 
 let supabase: SupabaseClient | null = null;
 if (SUPABASE_URL && SUPABASE_ANON_KEY) {
@@ -42,10 +42,10 @@ class DatabaseEngine {
         resolve(this.localDb);
       };
       request.onupgradeneeded = (event) => {
-        const db = (event.target as IDBOpenDBRequest).result;
+        const dbInstance = (event.target as IDBOpenDBRequest).result;
         Object.values(STORES).forEach(storeName => {
-          if (!db.objectStoreNames.contains(storeName)) {
-            db.createObjectStore(storeName, { keyPath: 'id' });
+          if (!dbInstance.objectStoreNames.contains(storeName)) {
+            dbInstance.createObjectStore(storeName, { keyPath: 'id' });
           }
         });
       };
@@ -53,8 +53,8 @@ class DatabaseEngine {
   }
 
   async getLocalStore(storeName: string, mode: IDBTransactionMode = 'readonly'): Promise<IDBObjectStore> {
-    const db = await this.connectLocal();
-    const transaction = db.transaction(storeName, mode);
+    const dbInstance = await this.connectLocal();
+    const transaction = dbInstance.transaction(storeName, mode);
     return transaction.objectStore(storeName);
   }
 
@@ -104,8 +104,8 @@ class DatabaseEngine {
     const cloudData = await this.cloudAll<T>(storeName);
     if (cloudData) {
       // Background Sync: Refresh Local Cache
-      const db = await this.connectLocal();
-      const transaction = db.transaction(storeName, 'readwrite');
+      const dbInstance = await this.connectLocal();
+      const transaction = dbInstance.transaction(storeName, 'readwrite');
       const store = transaction.objectStore(storeName);
       cloudData.forEach(item => store.put(item));
       return cloudData;
