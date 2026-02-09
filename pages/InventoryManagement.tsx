@@ -2,15 +2,23 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../db';
 import { InventoryItem } from '../types';
-import { Plus, Search, Package, Edit, Trash2, AlertCircle, Save, X, List, LayoutGrid, Loader2 } from 'lucide-react';
+import { Plus, Search, Package, Edit, Trash2, AlertCircle, Save, X, List, LayoutGrid, Loader2, CheckCircle2 } from 'lucide-react';
 
 const InventoryManagement: React.FC = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'TABLE' | 'GRID'>('TABLE');
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const fetchInventory = async () => {
     try {
@@ -23,7 +31,6 @@ const InventoryManagement: React.FC = () => {
 
   useEffect(() => {
     fetchInventory();
-    // Real-time synchronization
     const unsub = db.inventory.subscribe(fetchInventory);
     return () => unsub();
   }, []);
@@ -39,20 +46,44 @@ const InventoryManagement: React.FC = () => {
   const filteredItems = items.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   const handleSave = async () => {
-    const data = { ...formData, lastUpdated: new Date().toISOString() };
-    if (editingItem) {
-      const updatedItem = { ...editingItem, ...data };
-      await db.inventory.save(updatedItem);
-    } else {
-      const newItem: InventoryItem = { ...data, id: 'inv' + Date.now() } as InventoryItem;
-      await db.inventory.save(newItem);
+    if (!formData.name) {
+      showToast("Asset name required", 'error');
+      return;
     }
-    closeModal();
+
+    setIsSaving(true);
+    const data = { ...formData, lastUpdated: new Date().toISOString() };
+    try {
+      if (editingItem) {
+        const updatedItem = { ...editingItem, ...data };
+        await db.inventory.save(updatedItem);
+        showToast("Asset ledger updated");
+      } else {
+        const newItem: InventoryItem = { ...data, id: 'inv' + Date.now() } as InventoryItem;
+        await db.inventory.save(newItem);
+        showToast("New asset stock accounted");
+      }
+      fetchInventory();
+      closeModal();
+    } catch (err) {
+      showToast("Sync failure", 'error');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Delete stock item from inventory?')) {
+    if (!window.confirm('Delete stock item from inventory?')) return;
+    
+    setIsProcessing(true);
+    try {
       await db.inventory.delete(id);
+      showToast("Asset removed from stockpile");
+      fetchInventory();
+    } catch (err) {
+      showToast("Erase failed", 'error');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -79,6 +110,26 @@ const InventoryManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {toast && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none p-4">
+          <div className={`px-10 py-6 rounded-[25px] shadow-2xl animate-in zoom-in duration-300 flex flex-col items-center space-y-4 border-2 pointer-events-auto min-w-[320px] text-center ${
+            toast.type === 'success' ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-rose-500 text-white border-rose-400'
+          }`}>
+            {toast.type === 'success' ? <CheckCircle2 size={48} /> : <AlertCircle size={48} />}
+            <span className="font-black text-xs uppercase tracking-[0.3em] leading-relaxed">{toast.message}</span>
+          </div>
+        </div>
+      )}
+
+      {isProcessing && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-950 p-10 rounded-[15px] shadow-2xl flex flex-col items-center space-y-4 border border-slate-100 dark:border-slate-800">
+            <Loader2 className="animate-spin text-emerald-600" size={48} />
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">Processing Stock Records...</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center space-x-4 w-full md:w-auto">
           <div className="relative w-full md:w-80">
@@ -206,8 +257,8 @@ const InventoryManagement: React.FC = () => {
             </div>
             <div className="px-10 py-8 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex justify-end space-x-4">
               <button onClick={closeModal} className="px-6 py-3 font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[10px] hover:text-slate-900 dark:hover:text-white transition-colors">Abort</button>
-              <button onClick={handleSave} className="bg-slate-900 dark:bg-white text-white dark:text-black px-10 py-3 rounded-[15px] font-black text-xs uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-xl active:scale-95 flex items-center space-x-3">
-                <Save size={18} />
+              <button onClick={handleSave} disabled={isSaving} className="bg-slate-900 dark:bg-white text-white dark:text-black px-10 py-3 rounded-[15px] font-black text-xs uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-xl active:scale-95 flex items-center space-x-3">
+                {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
                 <span>Save Asset</span>
               </button>
             </div>

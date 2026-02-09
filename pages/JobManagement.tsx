@@ -310,11 +310,13 @@ const JobManagement: React.FC = () => {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {toast && (
-        <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-[15px] shadow-2xl animate-in slide-in-from-top-4 duration-300 flex items-center space-x-3 border ${
-          toast.type === 'success' ? 'bg-blue-600 text-white border-blue-500' : 'bg-rose-500 text-white border-rose-400'
-        }`}>
-          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-          <span className="font-black text-[10px] uppercase tracking-[0.2em]">{toast.message}</span>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none p-4">
+          <div className={`px-10 py-6 rounded-[25px] shadow-2xl animate-in zoom-in duration-300 flex flex-col items-center space-y-4 border-2 pointer-events-auto min-w-[320px] text-center ${
+            toast.type === 'success' ? 'bg-blue-600 text-white border-blue-400' : 'bg-rose-500 text-white border-rose-400'
+          }`}>
+            {toast.type === 'success' ? <CheckCircle2 size={48} /> : <AlertCircle size={48} />}
+            <span className="font-black text-xs uppercase tracking-[0.3em] leading-relaxed">{toast.message}</span>
+          </div>
         </div>
       )}
 

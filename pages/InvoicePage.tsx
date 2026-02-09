@@ -178,11 +178,13 @@ const InvoicePage: React.FC = () => {
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       <style>{styles}</style>
       {toast && (
-        <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-[15px] shadow-2xl animate-in slide-in-from-top-4 duration-300 flex items-center space-x-3 border ${
-          toast.type === 'success' ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-rose-500 text-white border-rose-400'
-        }`}>
-          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-          <span className="font-black text-[10px] uppercase tracking-[0.2em]">{toast.message}</span>
+        <div className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none p-4">
+          <div className={`px-10 py-6 rounded-[25px] shadow-2xl animate-in zoom-in duration-300 flex flex-col items-center space-y-4 border-2 pointer-events-auto min-w-[320px] text-center ${
+            toast.type === 'success' ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-rose-500 text-white border-rose-400'
+          }`}>
+            {toast.type === 'success' ? <CheckCircle2 size={48} /> : <AlertCircle size={48} />}
+            <span className="font-black text-xs uppercase tracking-[0.3em] leading-relaxed">{toast.message}</span>
+          </div>
         </div>
       )}
       {isProcessing && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm"><div className="bg-white dark:bg-slate-950 p-10 rounded-[15px] shadow-2xl flex flex-col items-center space-y-4 border border-slate-100 dark:border-slate-800"><Loader2 className="animate-spin text-blue-600" size={48} /><p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-900 dark:text-white">Processing Data...</p></div></div>}

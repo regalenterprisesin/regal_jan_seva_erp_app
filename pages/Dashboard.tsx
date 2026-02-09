@@ -19,6 +19,7 @@ const Dashboard: React.FC = () => {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [revenueMetric, setRevenueMetric] = useState<'paid' | 'credit'>('paid');
   const navigate = useNavigate();
 
   const fetchData = async () => {
@@ -38,7 +39,6 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     fetchData();
 
-    // Subscribe to all relevant tables for real-time dashboard updates
     const unsubJobs = db.jobs.subscribe(fetchData);
     const unsubCustomers = db.customers.subscribe(fetchData);
     const unsubInventory = db.inventory.subscribe(fetchData);
@@ -83,10 +83,28 @@ const Dashboard: React.FC = () => {
 
   const COLORS = ['#2563eb', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b'];
 
-  const revenueTrendData = [
-    { name: 'Mon', amount: 4200 }, { name: 'Tue', amount: 3100 }, { name: 'Wed', amount: 5800 },
-    { name: 'Thu', amount: 2900 }, { name: 'Fri', amount: 7200 }, { name: 'Sat', amount: 4800 }, { name: 'Sun', amount: 3900 },
-  ];
+  // Dynamic calculation for "Revenue Stream" Chart based on Weekly filter
+  const weeklyChartData = useMemo(() => {
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dataMap = days.map(day => ({ name: day, paid: 0, credit: 0 }));
+
+    const now = new Date();
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay()); // Start at Sunday
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    jobs.forEach(job => {
+      const jobDate = new Date(job.createdAt);
+      if (jobDate >= startOfWeek) {
+        const dayIdx = jobDate.getDay();
+        dataMap[dayIdx].paid += job.paidAmount || 0;
+        dataMap[dayIdx].credit += job.balance || 0;
+      }
+    });
+
+    // Reorder to start from Monday (Mon-Sun)
+    return [...dataMap.slice(1), dataMap[0]];
+  }, [jobs]);
 
   if (isLoading) {
     return (
@@ -126,7 +144,7 @@ const Dashboard: React.FC = () => {
           <div className="space-y-6">
             <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/20">
               <TrendingUp size={14} className="text-blue-300" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Weekly Growth: +12.5%</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em]">Live Registry Audit</span>
             </div>
             <h2 className="text-4xl md:text-5xl font-black tracking-tighter leading-tight">
               Centralized Control, <br />
@@ -160,10 +178,10 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard icon={<Users size={24} />} label="Customers" value={customers.length.toString()} trend="+8 new" positive={true} color="blue" />
-        <StatCard icon={<Briefcase size={24} />} label="Active Invoices" value={stats.pendingJobs.toString()} trend="Active" positive={true} color="amber" />
+        <StatCard icon={<Users size={24} />} label="Customers" value={customers.length.toString()} trend="Directory" positive={true} color="blue" />
+        <StatCard icon={<Briefcase size={24} />} label="Active Invoices" value={stats.pendingJobs.toString()} trend="In Progress" positive={true} color="amber" />
         <StatCard icon={<Package size={24} />} label="Low Stock" value={stats.lowStockCount.toString()} trend={stats.lowStockCount > 0 ? "Urgent" : "Optimal"} positive={stats.lowStockCount === 0} color={stats.lowStockCount > 0 ? "red" : "green"} />
-        <StatCard icon={<IndianRupee size={24} />} label="Collection" value={`₹${stats.totalRevenue.toLocaleString()}`} trend="+₹1.2k" positive={true} color="emerald" />
+        <StatCard icon={<IndianRupee size={24} />} label="Collection" value={`₹${stats.totalRevenue.toLocaleString()}`} trend="Net Total" positive={true} color="emerald" />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -175,28 +193,54 @@ const Dashboard: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-12">
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-8 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-sm">
-          <div className="flex justify-between items-center mb-10">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-10 gap-4">
             <div>
               <h3 className="font-black text-slate-800 dark:text-white flex items-center text-lg uppercase tracking-tight">
                 <TrendingUp size={20} className="mr-3 text-blue-600" /> Revenue Stream
               </h3>
-              <p className="text-xs font-bold text-slate-400 mt-1">Transaction volume trend</p>
+              <p className="text-xs font-bold text-slate-400 mt-1">Weekly Daily Breakdown</p>
+            </div>
+            
+            <div className="flex bg-slate-50 dark:bg-slate-950 p-1 rounded-[12px] border border-slate-100 dark:border-slate-800 shadow-inner">
+              <button 
+                onClick={() => setRevenueMetric('paid')}
+                className={`px-4 py-1.5 rounded-[10px] text-[10px] font-black uppercase tracking-widest transition-all ${revenueMetric === 'paid' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-sm' : 'text-slate-400'}`}
+              >
+                Total Paid
+              </button>
+              <button 
+                onClick={() => setRevenueMetric('credit')}
+                className={`px-4 py-1.5 rounded-[10px] text-[10px] font-black uppercase tracking-widest transition-all ${revenueMetric === 'credit' ? 'bg-white dark:bg-slate-800 text-rose-500 shadow-sm' : 'text-slate-400'}`}
+              >
+                Open Credit
+              </button>
             </div>
           </div>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={revenueTrendData}>
+              <AreaChart data={weeklyChartData}>
                 <defs>
-                  <linearGradient id="colorTrend" x1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  <linearGradient id="colorMetric" x1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={revenueMetric === 'paid' ? '#3b82f6' : '#f43f5e'} stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor={revenueMetric === 'paid' ? '#3b82f6' : '#f43f5e'} stopOpacity={0}/>
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 11, fontWeight: 700}} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 11, fontWeight: 700}} dx={-10} />
-                <Tooltip contentStyle={{borderRadius: '15px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', padding: '16px'}} />
-                <Area type="monotone" dataKey="amount" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#colorTrend)" animationDuration={1500} />
+                <Tooltip 
+                  contentStyle={{borderRadius: '15px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', padding: '16px', backgroundColor: '#fff', color: '#000'}}
+                  formatter={(value) => [`₹${value}`, revenueMetric === 'paid' ? 'Paid Amount' : 'Outstanding Credit']}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey={revenueMetric === 'paid' ? 'paid' : 'credit'} 
+                  stroke={revenueMetric === 'paid' ? '#3b82f6' : '#f43f5e'} 
+                  strokeWidth={4} 
+                  fillOpacity={1} 
+                  fill="url(#colorMetric)" 
+                  animationDuration={1500} 
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
