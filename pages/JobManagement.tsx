@@ -2,11 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../db';
 import { Job, Customer, Service, JobStatus, JobItem } from '../types';
-import { 
-  Plus, X, Save, User, IndianRupee, Loader2, Printer, Download, 
-  Trash2, Edit, ArrowUpDown, PlusCircle, Smartphone, Fingerprint,
-  ChevronDown, ArrowUp, ArrowDown, AlertCircle, Search, Filter
-} from 'lucide-react';
+import { Plus, X, Save, User, IndianRupee, Loader2, Printer, Download, Trash2, Edit, ArrowUpDown, PlusCircle, Smartphone, Fingerprint, ChevronDown, ArrowUp, ArrowDown, AlertCircle, Search, Filter, CheckCircle2 } from 'lucide-react';
 
 type SortField = 'customerName' | 'customerAadhaar' | 'serviceName' | 'date' | 'status';
 type SortDirection = 'ASC' | 'DESC' | null;
@@ -21,17 +17,22 @@ const JobManagement: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
   
   const [view, setView] = useState<'LIST' | 'BOARD' | 'OVERDUE'>('LIST');
   const [showModal, setShowModal] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ field: 'date', direction: 'DESC' });
 
-  // Filter and Search states
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<JobStatus | 'ALL'>('ALL');
 
-  // Staged Item Form State
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
   const [currentItem, setCurrentItem] = useState<JobItem>({
     serviceId: '',
     quantity: 1,
@@ -60,11 +61,9 @@ const JobManagement: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-    // Real-time synchronization
     const unsubJobs = db.jobs.subscribe(fetchData);
     const unsubCustomers = db.customers.subscribe(fetchData);
     const unsubServices = db.services.subscribe(fetchData);
-
     return () => {
       unsubJobs();
       unsubCustomers();
@@ -103,17 +102,8 @@ const JobManagement: React.FC = () => {
 
   const tasksToDisplay = useMemo(() => {
     let filtered = flattenedTasks;
-
-    if (view === 'OVERDUE') {
-      filtered = filtered.filter(t => t.isOverdue);
-    }
-
-    // Apply Status Filter
-    if (statusFilter !== 'ALL') {
-      filtered = filtered.filter(t => t.status === statusFilter);
-    }
-
-    // Apply Search Term Filter
+    if (view === 'OVERDUE') filtered = filtered.filter(t => t.isOverdue);
+    if (statusFilter !== 'ALL') filtered = filtered.filter(t => t.status === statusFilter);
     if (searchTerm.trim()) {
       const lowerSearch = searchTerm.toLowerCase();
       filtered = filtered.filter(t => 
@@ -124,17 +114,14 @@ const JobManagement: React.FC = () => {
         t.jobId.toLowerCase().includes(lowerSearch)
       );
     }
-
     return filtered;
   }, [flattenedTasks, view, statusFilter, searchTerm]);
 
   const sortedTasks = useMemo(() => {
     if (!sortConfig.direction) return tasksToDisplay;
-    
     return [...tasksToDisplay].sort((a, b) => {
       const aValue = String(a[sortConfig.field]).toLowerCase();
       const bValue = String(b[sortConfig.field]).toLowerCase();
-      
       if (aValue < bValue) return sortConfig.direction === 'ASC' ? -1 : 1;
       if (aValue > bValue) return sortConfig.direction === 'ASC' ? 1 : -1;
       return 0;
@@ -200,6 +187,7 @@ const JobManagement: React.FC = () => {
   const handleSave = async () => {
     if (!formData.customerId || !formData.items || formData.items.length === 0) return;
 
+    setIsSaving(true);
     const balance = totals.pendingAmount;
     const paymentStatus = balance === 0 ? 'PAID' : (formData.paidAmount || 0) > 0 ? 'PARTIAL' : 'UNPAID';
 
@@ -216,16 +204,25 @@ const JobManagement: React.FC = () => {
       updatedAt: new Date().toISOString()
     } as Job;
 
-    if (editingJob) {
-      await db.jobs.save({ ...editingJob, ...jobData });
-    } else {
-      const newJob: Job = { ...jobData, id: 'job' + Date.now(), createdAt: new Date().toISOString() };
-      await db.jobs.save(newJob);
+    try {
+      if (editingJob) {
+        await db.jobs.save({ ...editingJob, ...jobData });
+        showToast("Workflow entry updated");
+      } else {
+        const newJob: Job = { ...jobData, id: 'job' + Date.now(), createdAt: new Date().toISOString() };
+        await db.jobs.save(newJob);
+        showToast("New workflow sequence initiated");
+      }
+      closeModal();
+    } catch (err) {
+      showToast("Sync failure", 'error');
+    } finally {
+      setIsSaving(false);
     }
-    closeModal();
   };
 
   const handleItemStatusUpdate = async (job: Job, itemIndex: number, newStatus: JobStatus) => {
+    setIsSaving(true);
     const newItems = [...job.items];
     newItems[itemIndex] = { ...newItems[itemIndex], status: newStatus };
     
@@ -241,14 +238,15 @@ const JobManagement: React.FC = () => {
       updatedAt: new Date().toISOString() 
     };
 
-    // INSTANT REFLECTION: Optimistic UI Update
-    setJobs(prev => prev.map(j => j.id === job.id ? updatedJob : j));
-
     try {
       await db.jobs.save(updatedJob);
+      showToast(`Status updated to ${newStatus}`);
+      fetchData();
     } catch (err) {
-      console.error("Save failed, rolling back status:", err);
-      fetchData(); // Sync with actual db state if save fails
+      showToast("Status sync failed", 'error');
+      fetchData();
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -311,28 +309,25 @@ const JobManagement: React.FC = () => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
+      {toast && (
+        <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-[15px] shadow-2xl animate-in slide-in-from-top-4 duration-300 flex items-center space-x-3 border ${
+          toast.type === 'success' ? 'bg-blue-600 text-white border-blue-500' : 'bg-rose-500 text-white border-rose-400'
+        }`}>
+          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+          <span className="font-black text-[10px] uppercase tracking-[0.2em]">{toast.message}</span>
+        </div>
+      )}
+
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 print:hidden">
         <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
-          {/* Search Input */}
           <div className="relative w-full md:w-80">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search Customer, Phone, Aadhaar..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-[15px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none focus:border-blue-500 transition-all shadow-sm"
-            />
+            <input type="text" placeholder="Search Customer, Phone, Aadhaar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3 rounded-[15px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none focus:border-blue-500 transition-all shadow-sm" />
           </div>
 
-          {/* Status Filter */}
           <div className="relative w-full md:w-48">
             <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <select 
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="w-full pl-11 pr-4 py-3 rounded-[15px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none appearance-none cursor-pointer focus:border-blue-500 transition-all shadow-sm"
-            >
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="w-full pl-11 pr-4 py-3 rounded-[15px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-bold outline-none appearance-none cursor-pointer focus:border-blue-500 transition-all shadow-sm">
               <option value="ALL">All Status</option>
               <option value="PENDING">Pending</option>
               <option value="IN_PROGRESS">In Progress</option>
@@ -344,10 +339,7 @@ const JobManagement: React.FC = () => {
           <div className="flex bg-white dark:bg-slate-900 p-1 rounded-[15px] border border-slate-100 dark:border-slate-800 shadow-sm shrink-0">
             <button onClick={() => setView('LIST')} className={`px-6 py-2 rounded-[15px] text-xs font-black uppercase tracking-widest transition-all ${view === 'LIST' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>Workflow List</button>
             <button onClick={() => setView('BOARD')} className={`px-6 py-2 rounded-[15px] text-xs font-black uppercase tracking-widest transition-all ${view === 'BOARD' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}>Board View</button>
-            <button onClick={() => setView('OVERDUE')} className={`px-6 py-2 rounded-[15px] text-xs font-black uppercase tracking-widest transition-all flex items-center ${view === 'OVERDUE' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-400 hover:text-rose-600 dark:hover:text-rose-400'}`}>
-              Overdue
-              {overdueCount > 0 && <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[8px] font-black ${view === 'OVERDUE' ? 'bg-white text-rose-600' : 'bg-rose-600 text-white'}`}>{overdueCount}</span>}
-            </button>
+            <button onClick={() => setView('OVERDUE')} className={`px-6 py-2 rounded-[15px] text-xs font-black uppercase tracking-widest transition-all flex items-center ${view === 'OVERDUE' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-400 hover:text-rose-600 dark:hover:text-rose-400'}`}>Overdue {overdueCount > 0 && <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[8px] font-black ${view === 'OVERDUE' ? 'bg-white text-rose-600' : 'bg-rose-600 text-white'}`}>{overdueCount}</span>}</button>
           </div>
         </div>
       </div>
@@ -366,35 +358,16 @@ const JobManagement: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
               {sortedTasks.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center text-sm font-bold text-slate-300 uppercase tracking-widest italic">
-                    No matching jobs found in workflow.
-                  </td>
-                </tr>
+                <tr><td colSpan={5} className="px-8 py-20 text-center text-sm font-bold text-slate-300 uppercase tracking-widest italic">No matching jobs found in workflow.</td></tr>
               ) : (
                 sortedTasks.map(task => (
                   <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
-                    <td className="px-8 py-5">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800 border ${task.isOverdue ? 'border-rose-200 dark:border-rose-900' : 'border-slate-100 dark:border-slate-800'} flex items-center justify-center text-[10px] font-black ${task.isOverdue ? 'text-rose-600' : 'text-blue-600 dark:text-blue-400'}`}>{task.customerName[0]}</div>
-                        <div className="flex flex-col">
-                          <span className={`text-sm font-black ${task.isOverdue ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}>{task.customerName}</span>
-                          <span className="text-[12px] font-bold text-slate-500">{task.customerPhone}</span>
-                        </div>
-                      </div>
-                    </td>
+                    <td className="px-8 py-5"><div className="flex items-center space-x-3"><div className={`w-10 h-10 rounded-full bg-slate-50 dark:bg-slate-800 border ${task.isOverdue ? 'border-rose-200 dark:border-rose-900' : 'border-slate-100 dark:border-slate-800'} flex items-center justify-center text-[10px] font-black ${task.isOverdue ? 'text-rose-600' : 'text-blue-600 dark:text-blue-400'}`}>{task.customerName[0]}</div><div className="flex flex-col"><span className={`text-sm font-black ${task.isOverdue ? 'text-rose-600' : 'text-slate-900 dark:text-white'}`}>{task.customerName}</span><span className="text-[12px] font-bold text-slate-500">{task.customerPhone}</span></div></div></td>
                     <td className="px-6 py-5 font-mono text-sm tracking-widest text-blue-600 dark:text-blue-400">{task.customerAadhaar ? task.customerAadhaar.replace(/(\d{4})/g, '$1 ').trim() : 'NOT SET'}</td>
                     <td className="px-6 py-5 font-black text-slate-900 dark:text-white text-sm">{task.serviceName}</td>
                     <td className="px-6 py-5 text-sm font-bold text-slate-500">{new Date(task.date).toLocaleDateString('en-IN')}</td>
                     <td className="px-6 py-5">
-                      <select 
-                        value={task.status}
-                        onChange={(e) => handleItemStatusUpdate(task.originalJob, task.itemIndex, e.target.value as JobStatus)}
-                        className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-[15px] border outline-none bg-transparent cursor-pointer ${
-                          task.status === 'COMPLETED' ? 'text-emerald-600 border-emerald-500/20 bg-emerald-500/5' :
-                          task.status === 'IN_PROGRESS' ? 'text-blue-600 border-blue-500/20 bg-blue-500/5' : 'text-amber-600 border-amber-500/20 bg-amber-500/5'
-                        }`}
-                      >
+                      <select value={task.status} disabled={isSaving} onChange={(e) => handleItemStatusUpdate(task.originalJob, task.itemIndex, e.target.value as JobStatus)} className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-[15px] border outline-none bg-transparent cursor-pointer ${isSaving ? 'opacity-50' : ''} ${task.status === 'COMPLETED' ? 'text-emerald-600 border-emerald-500/20 bg-emerald-500/5' : task.status === 'IN_PROGRESS' ? 'text-blue-600 border-blue-500/20 bg-blue-500/5' : 'text-amber-600 border-amber-500/20 bg-amber-500/5'}`}>
                         <option value="PENDING">Pending</option>
                         <option value="IN_PROGRESS">In Progress</option>
                         <option value="COMPLETED">Completed</option>
@@ -411,10 +384,7 @@ const JobManagement: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 print:hidden">
           {(['PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as JobStatus[]).map(status => (
             <div key={status} className="bg-white dark:bg-slate-900 p-6 rounded-[15px] border border-slate-100 dark:border-slate-800 min-h-[500px] shadow-sm">
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center justify-between px-2">
-                {status.replace('_', ' ')}
-                <span className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full text-[9px] border border-slate-100 dark:border-slate-700">{flattenedTasks.filter(t => t.status === status).length}</span>
-              </h4>
+              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-6 flex items-center justify-between px-2">{status.replace('_', ' ')} <span className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full text-[9px] border border-slate-100 dark:border-slate-700">{flattenedTasks.filter(t => t.status === status).length}</span></h4>
               <div className="space-y-4">
                 {flattenedTasks.filter(t => t.status === status).map(task => (
                   <div key={task.id} className={`bg-slate-50 dark:bg-slate-950 p-5 rounded-[15px] border ${task.isOverdue ? 'border-rose-500/30' : 'border-transparent'} hover:border-blue-500/50 hover:bg-white dark:hover:bg-slate-800 transition-all group relative shadow-sm`}>
@@ -423,11 +393,7 @@ const JobManagement: React.FC = () => {
                       <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{task.customerName}</p>
                     </div>
                     <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800">
-                       <select 
-                         value={task.status}
-                         onChange={(e) => handleItemStatusUpdate(task.originalJob, task.itemIndex, e.target.value as JobStatus)}
-                         className="text-[8px] font-black uppercase bg-transparent outline-none text-slate-400 hover:text-blue-500 transition-colors cursor-pointer"
-                       >
+                       <select disabled={isSaving} value={task.status} onChange={(e) => handleItemStatusUpdate(task.originalJob, task.itemIndex, e.target.value as JobStatus)} className="text-[8px] font-black uppercase bg-transparent outline-none text-slate-400 hover:text-blue-500 transition-colors cursor-pointer">
                          <option value="PENDING">Pending</option>
                          <option value="IN_PROGRESS">Process</option>
                          <option value="COMPLETED">Done</option>
@@ -511,7 +477,10 @@ const JobManagement: React.FC = () => {
                    <div className="flex flex-col"><span className="text-[10px] font-black text-rose-600 uppercase tracking-widest mb-1">Pending Balance</span><span className={`text-xl font-black tracking-tighter ${ totals.pendingAmount > 0 ? 'text-rose-600' : 'text-emerald-500' }`}>₹{totals.pendingAmount}</span></div>
                 </div>
               </div>
-              <div className="flex space-x-4 w-full md:w-auto"><button onClick={closeModal} className="px-6 py-3.5 font-black text-slate-400 uppercase tracking-widest text-[9px] hover:text-slate-900 dark:hover:text-white transition-colors">Discard</button><button onClick={handleSave} className="bg-slate-900 dark:bg-white text-white dark:text-black px-10 py-3.5 rounded-[15px] font-black text-xs uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-xl flex items-center justify-center space-x-2"><Save size={18} /><span>Sync & Commit</span></button></div>
+              <div className="flex space-x-4 w-full md:w-auto"><button onClick={closeModal} className="px-6 py-3.5 font-black text-slate-400 uppercase tracking-widest text-[9px] hover:text-slate-900 dark:hover:text-white transition-colors">Discard</button><button onClick={handleSave} disabled={isSaving} className="bg-slate-900 dark:bg-white text-white dark:text-black px-10 py-3.5 rounded-[15px] font-black text-xs uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-xl flex items-center justify-center space-x-2">
+                {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                <span>{editingJob ? 'Update Sequence' : 'Sync & Commit'}</span>
+              </button></div>
             </div>
           </div>
         </div>

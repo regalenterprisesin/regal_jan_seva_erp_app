@@ -2,18 +2,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../db';
 import { Customer } from '../types';
-import { Search, Plus, Edit, Trash2, X, Save, UserPlus, Phone, CreditCard, MapPin, LayoutGrid, List, Fingerprint, Loader2, Upload, Download } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, X, Save, UserPlus, Phone, CreditCard, MapPin, LayoutGrid, List, Fingerprint, Loader2, Upload, Download, CheckCircle2, AlertCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 const CustomerManagement: React.FC = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'LIST' | 'GRID'>('LIST');
   const [showModal, setShowModal] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const fetchCustomers = async () => {
     try {
@@ -28,7 +35,6 @@ const CustomerManagement: React.FC = () => {
 
   useEffect(() => {
     fetchCustomers();
-    // Real-time synchronization for multi-user environments
     const unsub = db.customers.subscribe(fetchCustomers);
     return () => unsub();
   }, []);
@@ -48,15 +54,16 @@ const CustomerManagement: React.FC = () => {
 
   const handleSave = async () => {
     if (!formData.name) {
-      alert("Name is required.");
+      showToast("Name is required.", 'error');
       return;
     }
 
     if (formData.aadhaarNumber && formData.aadhaarNumber.length > 0 && formData.aadhaarNumber.length !== 12) {
-      alert("Aadhaar Number must be exactly 12 digits.");
+      showToast("Aadhaar must be 12 digits.", 'error');
       return;
     }
 
+    setIsSaving(true);
     const tempId = editingCustomer ? editingCustomer.id : 'c' + Date.now();
     const customerData: Customer = {
       ...formData,
@@ -64,36 +71,30 @@ const CustomerManagement: React.FC = () => {
       createdAt: editingCustomer ? editingCustomer.createdAt : new Date().toISOString()
     };
 
-    // INSTANT UI REFLECTION (Optimistic Update)
-    if (editingCustomer) {
-      setCustomers(prev => prev.map(c => c.id === tempId ? customerData : c));
-    } else {
-      setCustomers(prev => [customerData, ...prev]);
-    }
-
-    closeModal();
-
     try {
       await db.customers.save(customerData);
+      showToast(editingCustomer ? "Profile updated successfully" : "New client registered successfully");
+      closeModal();
     } catch (error) {
-      console.error("Save failed, rolling back:", error);
-      fetchCustomers(); // Re-sync if DB write fails
+      showToast("Failed to sync with cloud", 'error');
+      fetchCustomers();
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this customer record?')) return;
 
-    // INSTANT UI REFLECTION (Optimistic Update)
-    const originalCustomers = [...customers];
-    setCustomers(prev => prev.filter(c => c.id !== id));
-
+    setIsProcessing(true);
     try {
       await db.customers.delete(id);
+      showToast("Customer record permanently deleted");
+      fetchCustomers();
     } catch (error) {
-      console.error("Delete failed, rolling back:", error);
-      setCustomers(originalCustomers); // Rollback on error
-      alert("Failed to delete record. System re-syncing.");
+      showToast("Deletion failed. Try again.", 'error');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -125,11 +126,10 @@ const CustomerManagement: React.FC = () => {
             await db.customers.save(item);
           }
         }
-        await fetchCustomers(); // Refresh full list after batch import
-        alert(`Successfully synchronized imported data.`);
+        await fetchCustomers();
+        showToast("Directory synchronized from Excel");
       } catch (err) {
-        console.error(err);
-        alert('Failed to import data. Please check Excel format.');
+        showToast("Import failed. Check file format.", 'error');
       } finally {
         setIsProcessing(false);
         if (e.target) e.target.value = '';
@@ -146,6 +146,7 @@ const CustomerManagement: React.FC = () => {
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Customers");
       XLSX.writeFile(workbook, `Regal_Customers_${new Date().toISOString().split('T')[0]}.xlsx`);
+      showToast("Directory exported to Excel");
     } finally {
       setTimeout(() => setIsProcessing(false), 500);
     }
@@ -189,6 +190,15 @@ const CustomerManagement: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {toast && (
+        <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-[15px] shadow-2xl animate-in slide-in-from-top-4 duration-300 flex items-center space-x-3 border ${
+          toast.type === 'success' ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-rose-500 text-white border-rose-400'
+        }`}>
+          {toast.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
+          <span className="font-black text-[10px] uppercase tracking-[0.2em]">{toast.message}</span>
+        </div>
+      )}
+
       {isProcessing && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-950 p-10 rounded-[15px] shadow-2xl flex flex-col items-center space-y-4 border border-slate-100 dark:border-slate-800">
@@ -309,7 +319,10 @@ const CustomerManagement: React.FC = () => {
             </div>
             <div className="px-10 py-8 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex justify-end space-x-4">
               <button onClick={closeModal} className="px-6 py-3 font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[10px] hover:text-slate-900 dark:hover:text-white transition-colors">Cancel</button>
-              <button onClick={handleSave} className="bg-slate-900 dark:bg-white text-white dark:text-black px-10 py-3 rounded-[15px] font-black text-xs uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-blue-500 transition-all shadow-xl flex items-center space-x-2"><Save size={18} /><span>Save Record</span></button>
+              <button onClick={handleSave} disabled={isSaving} className="bg-slate-900 dark:bg-white text-white dark:text-black px-10 py-3 rounded-[15px] font-black text-xs uppercase tracking-widest hover:bg-blue-600 dark:hover:bg-blue-500 transition-all shadow-xl flex items-center space-x-2">
+                {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                <span>{editingCustomer ? 'Update Record' : 'Save Record'}</span>
+              </button>
             </div>
           </div>
         </div>
