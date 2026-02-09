@@ -68,30 +68,54 @@ const Dashboard: React.FC = () => {
     return { pendingJobs, totalRevenue, totalBalance, lowStockCount };
   }, [jobs, inventory]);
 
+  const COLORS = ['#2563eb', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b', '#0ea5e9', '#f43f5e', '#a855f7'];
+
+  // Weekly filter boundaries
+  const startOfWeek = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now);
+    start.setDate(now.getDate() - now.getDay());
+    start.setHours(0, 0, 0, 0);
+    return start;
+  }, []);
+
+  // Dynamic category data for "Revenue Split" Chart
   const categoryData = useMemo(() => {
-    const counts: Record<string, number> = {};
+    const counts: Record<string, { paid: number; credit: number }> = {};
+    
     jobs.forEach(job => {
-      job.items.forEach(item => {
-        const service = services.find(s => s.id === item.serviceId);
-        const cat = service?.category || 'Other';
-        counts[cat] = (counts[cat] || 0) + (item.unitPrice * item.quantity);
-      });
+      const jobDate = new Date(job.createdAt);
+      if (jobDate >= startOfWeek) {
+        // Distribute job's monetary values across its items' categories
+        const jobTotal = job.items.reduce((sum, item) => sum + item.subtotal, 0);
+        
+        job.items.forEach(item => {
+          const service = services.find(s => s.id === item.serviceId);
+          const cat = service?.category || 'Other';
+          if (!counts[cat]) counts[cat] = { paid: 0, credit: 0 };
+          
+          if (jobTotal > 0) {
+            const itemWeight = item.subtotal / jobTotal;
+            counts[cat].paid += (job.paidAmount || 0) * itemWeight;
+            counts[cat].credit += (job.balance || 0) * itemWeight;
+          }
+        });
+      }
     });
 
-    return Object.entries(counts).map(([name, value]) => ({ name, value }));
-  }, [jobs, services]);
-
-  const COLORS = ['#2563eb', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#64748b'];
+    return Object.entries(counts)
+      .map(([name, val]) => ({ 
+        name, 
+        value: Math.round(revenueMetric === 'paid' ? val.paid : val.credit) 
+      }))
+      .filter(item => item.value > 0)
+      .sort((a, b) => b.value - a.value);
+  }, [jobs, services, revenueMetric, startOfWeek]);
 
   // Dynamic calculation for "Revenue Stream" Chart based on Weekly filter
   const weeklyChartData = useMemo(() => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const dataMap = days.map(day => ({ name: day, paid: 0, credit: 0 }));
-
-    const now = new Date();
-    const startOfWeek = new Date(now);
-    startOfWeek.setDate(now.getDate() - now.getDay()); // Start at Sunday
-    startOfWeek.setHours(0, 0, 0, 0);
 
     jobs.forEach(job => {
       const jobDate = new Date(job.createdAt);
@@ -104,7 +128,7 @@ const Dashboard: React.FC = () => {
 
     // Reorder to start from Monday (Mon-Sun)
     return [...dataMap.slice(1), dataMap[0]];
-  }, [jobs]);
+  }, [jobs, startOfWeek]);
 
   if (isLoading) {
     return (
@@ -251,24 +275,39 @@ const Dashboard: React.FC = () => {
             <h3 className="font-black text-slate-800 dark:text-white flex items-center text-lg uppercase tracking-tight">
               <PieChartIcon size={20} className="mr-3 text-indigo-600" /> Revenue Split
             </h3>
-            <p className="text-xs font-bold text-slate-400 mt-1">By category</p>
+            <p className="text-xs font-bold text-slate-400 mt-1">Weekly by Category ({revenueMetric === 'paid' ? 'Cash' : 'Credit'})</p>
           </div>
           <div className="flex-1 min-h-[300px]">
             {categoryData.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-400 text-center">
                 <PieChartIcon size={48} className="opacity-10 mb-2" />
-                <p className="text-xs font-black uppercase">No data</p>
+                <p className="text-xs font-black uppercase">No {revenueMetric} data this week</p>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={categoryData} innerRadius={60} outerRadius={90} paddingAngle={8} cornerRadius={4} dataKey="value">
+                  <Pie 
+                    data={categoryData} 
+                    innerRadius={60} 
+                    outerRadius={90} 
+                    paddingAngle={8} 
+                    cornerRadius={4} 
+                    dataKey="value"
+                    animationDuration={1500}
+                  >
                     {categoryData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={{borderRadius: '15px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '12px'}} />
-                  <Legend verticalAlign="bottom" iconType="circle" formatter={(value) => <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{value}</span>} />
+                  <Tooltip 
+                    contentStyle={{borderRadius: '15px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '12px'}}
+                    formatter={(value) => [`₹${value}`, revenueMetric === 'paid' ? 'Paid' : 'Open Credit']}
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    iconType="circle" 
+                    formatter={(value) => <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{value}</span>} 
+                  />
                 </PieChart>
               </ResponsiveContainer>
             )}
